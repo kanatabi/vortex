@@ -1,18 +1,18 @@
-# Production view of blog-frontend: same base manifests, but env comes from
+# Production view of earendil: same base manifests, but env comes from
 # OpenBao via ESO instead of inline literals (architecture doc §5.3).
-# To deploy: point the Application CR's path at this overlay (or a staging twin).
+# Bao paths follow kv/{app}/{env}: values live at kv/data/earendil/production.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  - ../../../applications/blog-frontend
+  - ../../../applications/earendil
   - externalsecret.yaml
 
 patches:
   # Swap the inline env block for the ESO-generated ConfigMap.
   - target:
       kind: Deployment
-      name: blog-frontend
+      name: earendil-web-server
     patch: |-
       - op: remove
         path: /spec/template/spec/containers/0/env

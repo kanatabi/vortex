@@ -1,0 +1,9 @@
+# Production view of lumen. NO deployment patch needed: the base already declares
+# envFrom secretRef lumen-secrets (optional:true) — ESO simply MATERIALIZES that
+# Secret here; in k3d it stays absent (dev behavior). Bao paths: kv/{app}/{env}.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../../applications/lumen
+  - externalsecret.yaml

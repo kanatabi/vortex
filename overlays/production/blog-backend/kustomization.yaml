@@ -1,9 +1,0 @@
-# Production view of blog-backend. NO deployment patch needed: the base already
-# declares envFrom secretRef blog-backend-secrets (optional:true) — ESO simply
-# MATERIALIZES that Secret here; in k3d it stays absent (mock/dev behavior).
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-
-resources:
-  - ../../../applications/blog-backend
-  - externalsecret.yaml
