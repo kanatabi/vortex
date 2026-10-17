@@ -26,13 +26,20 @@ locally with k3d, see [`../README.md`](../README.md).
 ├── apps/                      # Application CRs ONLY (one per deployed app)
 │   ├── blog-frontend-app.yaml # SvelteKit SSR site   (source repo: sv-fzr)
 │   ├── blog-backend-app.yaml  # Go API               (source repo: fzr-blog-api — cluster-internal, no ingress)
-│   └── blog-db-app.yaml       # Patroni PostgreSQL   (selfHeal: false — DB guard)
+│   ├── blog-db-app.yaml       # Patroni PostgreSQL   (selfHeal: false — DB guard)
+│   ├── observability-app.yaml # Loki/VictoriaMetrics/Alloy/Grafana (Phase 5)
+│   └── meilisearch-app.yaml   # search backend       (cluster-internal)
 ├── applications/              # raw manifests, one kustomize dir per app
 │   ├── blog-frontend/
 │   ├── blog-backend/
-│   └── blog-db/
+│   ├── blog-db/
+│   ├── observability/
+│   └── meilisearch/
 └── platform/
     └── argocd/                # Argo CD's own install: pinned upstream + overlays
+        ├── namespace.yaml     # upstream install.yaml omits it — the overlay owns it now
+        ├── pinning-patch.yaml
+        └── resources-patches.yaml
 ```
 
 ## How sync works

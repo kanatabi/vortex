@@ -635,6 +635,8 @@ k8s-platform-manifests/
 │   ├── blog-frontend-app.yaml
 │   ├── blog-backend-app.yaml
 │   ├── blog-db-app.yaml
+│   ├── observability-app.yaml
+│   ├── meilisearch-app.yaml
 │   └── ...                        # (argocd itself stays bootstrapped manually in Phase 6)
 ├── applications/                  # raw manifests, one dir per app
 │   ├── blog-frontend/             # SvelteKit SSR site (repo: sv-fzr, adapter-node)
@@ -648,13 +650,25 @@ k8s-platform-manifests/
 │   │   ├── namespace.yaml
 │   │   ├── deployment.yaml
 │   │   └── service.yaml           # ClusterIP only — no Ingress (API is internal)
-│   └── blog-db/
+│   ├── blog-db/
+│   │   ├── kustomization.yaml
+│   │   ├── namespace.yaml
+│   │   └── postgresql.yaml        # Zalando postgresql CR (Phase 4)
+│   ├── observability/             # Loki + VictoriaMetrics + Alloy DaemonSet + Grafana (Phase 5)
+│   │   ├── kustomization.yaml
+│   │   ├── namespace.yaml
+│   │   ├── loki.yaml
+│   │   ├── victoria-metrics.yaml
+│   │   ├── alloy.yaml
+│   │   └── grafana.yaml
+│   └── meilisearch/
 │       ├── kustomization.yaml
 │       ├── namespace.yaml
-│       └── postgresql.yaml        # Zalando postgresql CR (Phase 4)
+│       └── meilisearch.yaml       # ClusterIP only, Phase 4.3
 └── platform/
     └── argocd/                    # Phase 6 overlay (pinned upstream + selector patches)
         ├── kustomization.yaml
+        ├── namespace.yaml
         ├── pinning-patch.yaml
         └── resources-patches.yaml
 ```
