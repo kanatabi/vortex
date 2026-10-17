@@ -8,7 +8,7 @@ metadata:
   name: lumen-pg
   namespace: db
 spec:
-  teamId: 'blog'
+  teamId: 'lumen'
   volume:
     size: 10Gi
     storageClass: 'local-path'
@@ -29,8 +29,17 @@ spec:
   resources:
     requests: { cpu: '250m', memory: '512Mi' }
     limits: { cpu: '1000m', memory: '1Gi' }
+  # ONE Patroni cluster (shared instances) serving BOTH environments —
+  # separation lives at database + credentials level, selected per env by the
+  # DATABASE_URL behind each overlay's Bao path (INFRA doc §5):
+  #   kv/lumen/production -> .../lumen-pg-postgres.db.svc/lumen_production
+  #   kv/lumen/staging    -> .../lumen-pg-postgres.db.svc/lumen_staging
+  # Accepted trade-off: staging load spikes share prod's box (right for blog scale).
   databases:
-    lumen_database: lumen
+    lumen_staging: db_user_staging
+    lumen_production: db_user_production
   users:
-    lumen:
+    db_user_staging:
+      - createdb
+    db_user_production:
       - createdb
