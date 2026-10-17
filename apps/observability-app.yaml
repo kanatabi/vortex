@@ -6,7 +6,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: 'https://github.com/yourusername/k8s-platform-manifests.git'
+    repoURL: 'https://github.com/cavadevop/k8s-platform-manifests.git'
     targetRevision: HEAD
     path: applications/observability
   destination:

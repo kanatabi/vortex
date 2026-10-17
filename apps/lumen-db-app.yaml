@@ -1,14 +1,14 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: blog-db
+  name: lumen-db
   namespace: argocd
 spec:
   project: default
   source:
-    repoURL: 'https://github.com/yourusername/k8s-platform-manifests.git'
+    repoURL: 'https://github.com/cavadevop/k8s-platform-manifests.git'
     targetRevision: HEAD
-    path: applications/blog-db
+    path: applications/lumen-db
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: db

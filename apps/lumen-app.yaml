@@ -1,17 +1,17 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: blog-frontend
+  name: lumen
   namespace: argocd
 spec:
   project: default
   source:
-    repoURL: 'https://github.com/yourusername/k8s-platform-manifests.git'
+    repoURL: 'https://github.com/cavadevop/k8s-platform-manifests.git'
     targetRevision: HEAD
-    path: applications/blog-frontend
+    path: applications/lumen           # prod base; repoint at overlays/production/lumen per §5.3
   destination:
     server: 'https://kubernetes.default.svc'
-    namespace: blog-frontend
+    namespace: lumen
   syncPolicy:
     automated:
       prune: true
