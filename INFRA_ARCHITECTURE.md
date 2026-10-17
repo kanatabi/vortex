@@ -19,6 +19,8 @@
   * **Workloads:** Patroni PostgreSQL (Replica), Meilisearch, Grafana UI, Go Application Instance 2, SvelteKit Frontend Instance 2, Traefik Ingress Edge Router, cert-manager, OpenBao (secrets/config store), NetBird Agent.
 
 * **Total Monthly Investment:** **IDR 387,000 / month** (~$24–$25 USD/mo).
+  *Patroni Option C* (3-instance DB, Phase 4): +1× NEO Lite MS 4.2 as worker-3 →
+  **IDR 526,000 / month** (~$33 USD/mo).
 
 * **Networking:** node↔node traffic rides either a **GIO VPC** (Path A, preferred — if
   available on NEO Lite; verify at rental per Phase 1) or the **NetBird mesh** (Path B).
@@ -402,7 +404,24 @@ in this phase touches the VPS.
      both workers + a voter-only peer on the master, ~128 Mi). Only worth it if you move
      the control plane to HA later.
 
-   Application `postgresql` CR (Primary/Replica split across nodes):
+   **Topology options — A (default) or C (recommended if renting a 4th instance):**
+   Election quorum comes from the K8s DCS in *both* options, so a 3rd PG instance is
+   about **data durability and headroom, not about electing leaders.**
+
+   | | **A — 2 instances, 2 workers** (default, current §1) | **C — 3 instances, 3 workers** (1 per worker) |
+   | :--- | :--- | :--- |
+   | Data copies / failure domains | 2 / 2 | **3 / 3** |
+   | Ack'd writes survive losing the primary node? | only within replication-lag window (+ nightly dump) | **yes, zero-loss with `synchronous_mode: true`** |
+   | Rolling maintenance | touches the only replica | rebuild one, two stay current |
+   | Cost | — | +IDR 139k/mo (3rd NEO Lite MS 4.2) → total **526k (~$33/mo)** |
+   | RAM/disk per worker | as §1 | +512 Mi req / +10 Gi disk on worker-3 |
+
+   **A is documented as the default** and the manifests ship it; C is a deliberate
+   upgrade (or day-one choice at rental). Option "B" (3 instances packed 2+1 on two
+   workers) was considered and rejected: it costs the same RAM as C while sharing the
+   failure domains of A — the worst of both.
+
+   Application `postgresql` CR — **Option A** (Primary/Replica split across workers):
    ```yaml
    apiVersion: 'acid.zalan.do/v1'
    kind: postgresql
@@ -429,8 +448,29 @@ in this phase touches the VPS.
        limits:   { cpu: '1000m', memory: '1Gi' }
      databases: { blog_prod: db_user }
    ```
-   > The operator spreads the two replicas across hosts with built-in pod anti-affinity
+   > The operator spreads instances across hosts with built-in pod anti-affinity
    > and creates `blog-pg-postgres` (read/write) + `blog-pg-repl` (read-only) Services.
+
+   **Option C — step by step** (rental day or growth from A; identical procedure, A→C is
+   zero-downtime):
+
+   1. Provision **worker-3** (NEO Lite MS 4.2): run Phase 1 (NetBird, VPC attach, ufw)
+      and Phase 2 host-prep on it, join with
+      `INSTALL_K3S_EXEC="agent --node-name=worker-3 --flannel-iface=<CLUSTER_IFACE> --kubelet-arg=failSwapOn=false"`,
+      then `kubectl label node worker-3 node-pool=data` — the CR's affinity
+      `In [data, edge]` now matches a third node; no pool label invention needed.
+   2. Edit the CR (one PR): `numberOfInstances: 3`, `synchronous_mode: 'true'`.
+   3. Argo syncs; the operator creates `blog-pg-2`, streams a basebackup from the leader,
+      joins the cluster. Verify one member per worker:
+      ```bash
+      kubectl -n db get pods -o wide        # blog-pg-0/1/2 on three different nodes
+      kubectl -n db exec blog-pg-0 -- patronictl list
+      ```
+   4. `synchronous_mode: true` semantics: each commit waits for **one** replica's WAL
+      ack → losing any *single* worker cannot lose acknowledged data. Add
+      `synchronous_mode_strict: 'true'` if you prefer refusing writes over ever running
+      without a sync replica (stricter availability trade — blog default: off).
+   5. Update the §7 checklist row to the C variant (zero-loss test below).
 
    Deploy the operator first (pinned release), then the CR via GitOps:
    ```bash
@@ -841,7 +881,8 @@ on `external_secret_ready` and `bao_unsealed` so a sealed store is loud, not sil
 
 - [ ] Cluster survives **reboot of every node** (per-path checks: `INTERNAL-IP` shows the chosen private plane, `--flannel-iface` took; Path B: NetBird systemd ordering verified)
 - [ ] Argo CD: all pods on master, all components pinned, initial admin secret deleted
-- [ ] Patroni: kill primary node → replica promotes within TTL; **node-loss quorum test passed**
+- [ ] Patroni (Option A): kill primary node → replica promotes within TTL
+- [ ] Patroni (Option C, if adopted): all 3 members on distinct nodes; killing the sync replica leaves writes flowing (a new sync is elected); losing the primary loses **zero acknowledged writes**
 - [ ] TLS: certificate issued + auto-renews (`kubectl get certificate -A`); HTTP→HTTPS redirect live
 - [ ] API stays internal: `kubectl get ingress -A` shows only the frontend + mesh-private routes; probing the nodes from outside (`curl http://<any-node-ip>:80 -H 'Host: api…'`) returns 404
 - [ ] Secrets plane: ESO ExternalSecrets all `Ready`; portal AppRole can read/save a staging key and the new version appears via Argo→ESO→pod rollout

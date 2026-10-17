@@ -1,5 +1,7 @@
 # Requires Zalando's Postgres Operator installed first (INFRA_ARCHITECTURE.md, Phase 4):
 #   kubectl apply -f https://raw.githubusercontent.com/zalando/postgres-operator/v1.13.0/manifests/operator-manifests.yaml
+# This is Topology Option A (2 instances / 2 workers). Option C (3 instances on 3
+# workers + synchronous_mode) is a documented one-PR change — INFRA doc Phase 4.
 apiVersion: 'acid.zalan.do/v1'
 kind: postgresql
 metadata:
