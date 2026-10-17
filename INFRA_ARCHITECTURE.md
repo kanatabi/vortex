@@ -904,6 +904,13 @@ The `ENV`/`PIN` placeholders are exactly what **kustomize overlays** substitute:
 The app's base manifests never contain env-specific values, and `kustomize edit set image`
 (CI) + overlay pins (humans) touch disjoint files.
 
+> **Scaffolded:** [`overlays/production/blog-frontend/`](k8s-platform-manifests/overlays/production/blog-frontend/)
+> (JSON6902 patch swaps the inline env block for the ESO-rendered `app-config` ConfigMap)
+> and [`overlays/production/blog-backend/`](k8s-platform-manifests/overlays/production/blog-backend/)
+> (needs no patch — the base already declares `envFrom` `blog-backend-secrets` as
+> `optional: true`, so ESO just *materializes* that Secret; k3d stays mock-friendly).
+> Going production = point that app's Application CR `source.path` at the overlay.
+
 ### 5.4 Promotion flow (staging → prod)
 
 1. `bao kv get -format=json kv/staging/blog-backend/<new>` → verify in staging.
@@ -934,10 +941,17 @@ PUT  /v1/kv/data/<env>/<app>  (cas=N)       # save = new version, optimistic loc
 
 ### 5.6 Bootstrap, unsealing, and DR-critical seeds
 
-Deploy order: ESO (GitOps overlay, `external-secrets` chart pinned) → OpenBao app
-(namespace `secrets`, worker-2, 1 Gi PVC, file storage) → *manual first-time*: init,
-unseal, enable `kv` v2 mount, create AppRoles/policies → seed the first values → after
-that, everything above is Git-synced.
+Deploy order: **all three pieces are now scaffolded** — [`applications/openbao/`](k8s-platform-manifests/applications/openbao/)
+(app `secrets`, worker-2, 1 Gi PVC, file storage; the header comment is the full
+init/unseal/AppRole command list), `apps/external-secrets-app.yaml` (Argo-managed **OCI
+Helm chart** on worker-1; requires one manual `kubectl create ns external-secrets`;
+deliberately not a kustomize+helmCharts dir so repo validation stays helm-free), and
+[`applications/secrets-plane/`](k8s-platform-manifests/applications/secrets-plane/)
+(`ClusterSecretStore bao`, sync-wave 1 — self-heals via Argo retry while ESO CRDs land).
+Sequence: hub syncs openbao + external-secrets (wave 0) → *manual first-time*: init,
+unseal, enable `kv` v2 mount, create AppRoles/policies → seed the first values +
+`bao-approle-credentials` Secret → secrets-plane store goes green → overlays/production
+ExternalSecrets render → everything above that is Git-synced.
 
 - **Unsealing:** after any Bao restart it is sealed and ESO renders nothing (running pods
   keep their injected env — failure is limited to new/changed pods). Blog-scale answer:

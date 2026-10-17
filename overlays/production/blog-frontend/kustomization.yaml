@@ -1,0 +1,22 @@
+# Production view of blog-frontend: same base manifests, but env comes from
+# OpenBao via ESO instead of inline literals (architecture doc §5.3).
+# To deploy: point the Application CR's path at this overlay (or a staging twin).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../../applications/blog-frontend
+  - externalsecret.yaml
+
+patches:
+  # Swap the inline env block for the ESO-generated ConfigMap.
+  - target:
+      kind: Deployment
+      name: blog-frontend
+    patch: |-
+      - op: remove
+        path: /spec/template/spec/containers/0/env
+      - op: add
+        path: /spec/template/spec/containers/0/envFrom
+        value:
+          - configMapRef: { name: app-config }
