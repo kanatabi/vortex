@@ -24,26 +24,26 @@ locally with k3d, see [`../README.md`](../README.md).
 ├── bootstrap/
 │   └── apps-hub.yaml          # root Application — the only file you apply manually
 ├── apps/                      # Application CRs ONLY (one per deployed app)
-│   ├── blog-frontend-app.yaml # SvelteKit SSR site   (source repo: sv-fzr)
-│   ├── blog-backend-app.yaml  # Go API               (source repo: fzr-blog-api — cluster-internal, no ingress)
-│   ├── blog-db-app.yaml       # Patroni PostgreSQL   (selfHeal: false — DB guard)
+│   ├── earendil-app.yaml # SvelteKit SSR site   (source repo: sv-fzr)
+│   ├── lumen-app.yaml  # Go API               (source repo: fzr-blog-api — cluster-internal, no ingress)
+│   ├── lumen-db-app.yaml       # Patroni PostgreSQL   (selfHeal: false — DB guard)
 │   ├── observability-app.yaml # Loki/VictoriaMetrics/Alloy/Grafana (Phase 5)
 │   ├── meilisearch-app.yaml   # search backend       (cluster-internal)
 │   ├── openbao-app.yaml       # the values store itself (§5)
 │   ├── external-secrets-app.yaml # ESO, as an OCI Helm chart — the one non-git Application
 │   └── secrets-plane-app.yaml # ClusterSecretStore `bao` (wave 1: after ESO+OpenBao)
 ├── applications/              # raw manifests, one kustomize dir per app
-│   ├── blog-frontend/
-│   ├── blog-backend/
-│   ├── blog-db/
+│   ├── earendil/
+│   ├── lumen/
+│   ├── lumen-db/
 │   ├── observability/
 │   ├── meilisearch/
 │   ├── openbao/
 │   └── secrets-plane/
 ├── overlays/
 │   └── production/            # same bases + values sourced from OpenBao via ESO (§5.3)
-│       ├── blog-frontend/     # JSON6902 patch: inline env -> ESO-rendered app-config
-│       └── blog-backend/      # ExternalSecret materializes blog-backend-secrets
+│       ├── earendil/     # JSON6902 patch: inline env -> ESO-rendered app-config
+│       └── lumen/      # ExternalSecret materializes lumen-secrets
 └── platform/
     └── argocd/                # Argo CD's own install: pinned upstream + overlays
         ├── namespace.yaml     # upstream install.yaml omits it — the overlay owns it now
@@ -64,7 +64,7 @@ default).
 
 ## Adding a new application
 
-1. Create `applications/<name>/` — copy `applications/blog-backend/` as the template
+1. Create `applications/<name>/` — copy `applications/lumen/` as the template
    (`kustomization.yaml` with an `images:` stanza, `namespace.yaml`, workloads, ingress).
 2. Create `apps/<name>-app.yaml` — copy an existing one; set `path`, `destination.namespace`,
    name. That's it — the hub picks it up automatically (no hub edits).
@@ -94,8 +94,8 @@ default).
 - **Versions pinned everywhere:** Argo overlay and cert-manager/operator URLs carry exact
   versions. Bump deliberately, one upgrade PR at a time.
 - **Namespaces:** one per app, declared in the app's own `namespace.yaml`
-  (`blog-frontend`, `blog-backend`, `db`, `search`, `ingress`, …).
-- **DB app exception:** `blog-db-app.yaml` disables `selfHeal` so incident-time
+  (`earendil`, `lumen`, `db`, `search`, `ingress`, …).
+- **DB app exception:** `lumen-db-app.yaml` disables `selfHeal` so incident-time
   failovers aren't stomped by Git. Keep it that way.
 
 ## First bootstrap (new cluster)
@@ -105,10 +105,10 @@ default).
 kubectl apply -k platform/argocd/
 # 2. one-time namespace for the ESO chart app (charts don't self-create it)
 kubectl create namespace external-secrets
-# 3. App-of-apps hub — after replacing `yourusername` in bootstrap/ and apps/
+# 3. App-of-apps hub — after replacing `cavadevop` in bootstrap/ and apps/
 kubectl apply -f bootstrap/apps-hub.yaml
 ```
 
-Placeholders to replace before going live: `yourusername` (all `repoURL`s),
-`yourdomain.com` (ingress host + frontend `ORIGIN`/`API_BASE`/`PUBLIC_API_BASE` env),
+Placeholders to replace before going live: `cavadevop` (all `repoURL`s),
+`ainurrofiq.com` + `staging.ainurrofiq.com` (ingress hosts + frontend `ORIGIN`/`API_BASE`/`PUBLIC_API_BASE` env),
 and the `REPLACE_AT_BOOTSTRAP` roleId in `applications/secrets-plane/`.

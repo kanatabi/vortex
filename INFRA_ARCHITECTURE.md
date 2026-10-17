@@ -11,12 +11,12 @@
 * **Worker Node 1 (Data & Observability Backbone):** 1x **Biznet Gio NEO Lite MS 4.2**
   * **Resources:** 2 vCPU / 4 GB RAM / 60 GB SSD
   * **Cost:** IDR 139,000 / month (~$8.80 USD)
-  * **Workloads:** Patroni PostgreSQL (Primary), Grafana LGTM data plane (Loki, VictoriaMetrics, Alloy), Go Application Instance 1, SvelteKit Frontend Instance 1, External Secrets Operator, NetBird Agent.
+  * **Workloads:** Patroni PostgreSQL (Primary), Grafana LGTM data plane (Loki, VictoriaMetrics, Alloy), Lumen http-server Instance 1 + worker, Earendil Instance 1, External Secrets Operator, NetBird Agent.
 
 * **Worker Node 2 (Search, Replica & Traffic):** 1x **Biznet Gio NEO Lite MS 4.2**
   * **Resources:** 2 vCPU / 4 GB RAM / 60 GB SSD
   * **Cost:** IDR 139,000 / month (~$8.80 USD)
-  * **Workloads:** Patroni PostgreSQL (Replica), Meilisearch, Grafana UI, Go Application Instance 2, SvelteKit Frontend Instance 2, Traefik Ingress Edge Router, cert-manager, OpenBao (secrets/config store), NetBird Agent.
+  * **Workloads:** Patroni PostgreSQL (Replica), Meilisearch, Grafana UI, Lumen http-server Instance 2, Earendil Instance 2, Traefik Ingress Edge Router, cert-manager, OpenBao (secrets/config store), NetBird Agent.
 
 * **Total Monthly Investment:** **IDR 387,000 / month** (~$24–$25 USD/mo).
   *Patroni Option C* (3-instance DB, Phase 4): +1× NEO Lite MS 4.2 as worker-3 →
@@ -42,8 +42,9 @@ Memory limits must stay **below** allocatable RAM (node OS + kubelet reserve ~50
 | Grafana Alloy (DaemonSet, 1 per worker) | worker-1 & 2 | 100m/128Mi each | 300m/256Mi each | — |
 | Grafana UI | worker-2 | 100m/128Mi | 300m/256Mi | 1 Gi |
 | Meilisearch | worker-2 | 200m/384Mi | 500m/700Mi | 5 Gi |
-| Go API (2 instances) | worker-1 & 2 | 100m/128Mi each | 300m/256Mi each | — |
-| SvelteKit SSR frontend (2 instances) | worker-1 & 2 | 100m/192Mi each | 300m/384Mi each | — |
+| Lumen http-server (2 instances) | worker-1 & 2 | 100m/128Mi each | 300m/256Mi each | — |
+| Lumen worker (1 instance) | worker-1 or 2 | 100m/128Mi | 300m/256Mi | — |
+| Earendil (SvelteKit SSR, 2 instances) | worker-1 & 2 | 100m/192Mi each | 300m/384Mi each | — |
 | OpenBao (secrets/config plane) | worker-2 | 100m/160Mi | 300m/320Mi | 1 Gi (file storage) |
 | External Secrets Operator | worker-1 | 50m/128Mi | 200m/256Mi | — |
 | Traefik + cert-manager | worker-2 | 100m/128Mi | 300m/256Mi | — |
@@ -54,7 +55,7 @@ Memory limits must stay **below** allocatable RAM (node OS + kubelet reserve ~50
 >
 > **Anti-affinity rule:** Patroni Primary and Replica must never co-schedule. Zalando's
 > operator enforces hostname pod-anti-affinity by default; the same rule is set explicitly
-> in the Go API and SvelteKit frontend `deployment.yaml` files (2 replicas, 2 workers).
+> in the Lumen http-server and Earendil `deployment.yaml` files (2 replicas, 2 workers).
 
 ### Component & Data-Flow Diagrams
 
@@ -62,10 +63,10 @@ Memory limits must stay **below** allocatable RAM (node OS + kubelet reserve ~50
 
 ```mermaid
 flowchart LR
-  V["Visitors"] -->|"HTTPS yourdomain.com"| DNS["Public DNS<br/>A record"]
+  V["Visitors"] -->|"HTTPS ainurrofiq.com"| DNS["Public DNS<br/>A record"]
   DNS --> TF["Traefik edge<br/>worker-2 · TLS"]
-  TF --> FE["SvelteKit SSR pods ×2<br/>worker-1 & worker-2"]
-  FE -->|"SSR page loads:<br/>API_BASE (internal DNS)"| API["Go API pods ×2"]
+  TF --> FE["Earendil (SSR pods) ×2<br/>worker-1 & worker-2"]
+  FE -->|"SSR page loads:<br/>API_BASE (internal DNS)"| API["Lumen http-server ×2<br/>(+ worker ×1)"]
   FE -->|"browser search-suggest:<br/>same-origin /api/* proxy"| API
   API --> PG[("Patroni PG<br/>primary w-1 / replica w-2")]
   API --> MEIL["Meilisearch<br/>worker-2 · ClusterIP only"]
@@ -80,12 +81,12 @@ frontend ingress; the API and Meilisearch have no ingress at all (§2).
 ```mermaid
 flowchart TB
   subgraph GIT["Git (source of truth)"]
-    APP["App repos<br/>sv-fzr · blog-api<br/>(env.yaml.sample schemas)"]
+    APP["App repos<br/>sv-fzr (earendil) · fzr-backend (lumen)<br/>(env.yaml.sample schemas)"]
     MAN["k8s-platform-manifests<br/>app-of-apps · ExternalSecrets<br/>— no real values"]
   end
   CI["GitHub Actions<br/>build + kustomize set image"]
   GHCR[("GHCR<br/>sha-pinned images")]
-  BAO[("OpenBao KV-v2<br/>values: kv/{staging,prod}/{app}/vN<br/>worker-2")]
+  BAO[("OpenBao KV-v2<br/>values: kv/{app}/{env}/vN<br/>worker-2")]
   subgraph K8S["K3s cluster"]
     ARGO["Argo CD · master"]
     ESO["External Secrets Operator · worker-1"]
@@ -120,8 +121,8 @@ Reading guide:
 
 | Service | Access Level | Endpoint / Route | Protocol / Security Layer |
 | :--- | :--- | :--- | :--- |
-| **Blog Frontend (SvelteKit SSR)** | **Public** | `yourdomain.com` | HTTPS via Traefik Ingress + Let's Encrypt TLS (HTTP→HTTPS redirect enforced) |
-| **Go API** | **Cluster-internal only** | `http://blog-backend.blog-backend.svc.cluster.local` | No public ingress. SSR pods call it directly; the browser's single client-side call (search suggest) rides the frontend's same-origin `/api/...` proxy |
+| **Blog Frontend (SvelteKit SSR)** | **Public** | `ainurrofiq.com` | HTTPS via Traefik Ingress + Let's Encrypt TLS (HTTP→HTTPS redirect enforced) |
+| **Lumen API** | **Cluster-internal only** | `http://lumen-http-server.lumen.svc.cluster.local` | No public ingress. Earendil SSR pods call it directly; the browser's single client-side call (search suggest) rides earendil's same-origin `/api/...` proxy |
 | **Argo CD Control Panel** | **Private (VPN Only)** | `localhost:8080` (Port-forwarded) / Private Ingress | Private NetBird WireGuard Overlay Mesh |
 | **Grafana / VictoriaMetrics / Loki** | **Private (VPN Only)** | Internal Mesh DNS / Local Tunnel | Private NetBird WireGuard Overlay Mesh |
 | **Meilisearch** | **Cluster-internal only** | `http://meilisearch.search.svc.cluster.local:7700` | No public or mesh ingress; API-only access |
@@ -138,14 +139,14 @@ Reading guide:
 
 ### A. Public Domain DNS (For External Users)
 Managed via your external DNS provider (Cloudflare, Namecheap, Route53, etc.):
-* **A Record:** `yourdomain.com` ➔ `[Biznet Gio Public IP]`
-* **Wildcard CNAME / A Record:** `*.yourdomain.com` ➔ `[Biznet Gio Public IP]`
+* **A Record:** `ainurrofiq.com` ➔ `[Biznet Gio Public IP]`
+* **Wildcard CNAME / A Record:** `*.ainurrofiq.com` ➔ `[Biznet Gio Public IP]`
 * **Routing:** Traefik Ingress receives traffic on ports 80/443 and terminates SSL via `cert-manager` (ACME HTTP-01 challenge).
 * **Ordering constraint:** public DNS records must resolve to all node IPs (or the egress node running Traefik) **before** first certificate issuance, or HTTP-01 solvers will fail.
 
 ### B. Internal Cluster DNS (Automatic via K3s)
 * Managed out-of-the-box by **CoreDNS** inside the cluster.
-* Microservices communicate dynamically using Kubernetes internal service endpoints (e.g., `blog-pg-postgres.db.svc.cluster.local:5432` for reads/writes, `blog-pg-repl.db.svc.cluster.local` for read-only).
+* Microservices communicate dynamically using Kubernetes internal service endpoints (e.g., `lumen-pg-postgres.db.svc.cluster.local:5432` for reads/writes, `lumen-pg-repl.db.svc.cluster.local` for read-only).
 
 ### C. Private VPN Mesh DNS (Automatic via NetBird)
 * Managed by **NetBird Magic DNS**.
@@ -427,7 +428,7 @@ in this phase touches the VPS.
    apiVersion: 'acid.zalan.do/v1'
    kind: postgresql
    metadata:
-     name: blog-pg
+     name: lumen-pg
      namespace: db
    spec:
      teamId: 'blog'
@@ -447,10 +448,16 @@ in this phase touches the VPS.
      resources:
        requests: { cpu: '250m', memory: '512Mi' }
        limits:   { cpu: '1000m', memory: '1Gi' }
-     databases: { blog_prod: db_user }
+     databases: { lumen_staging: db_user_staging, lumen_production: db_user_production }
+   users:
+     db_user_staging: [createdb]
+     db_user_production: [createdb]
    ```
+   > **DB-1 in one line:** one shared Patroni cluster, one database per environment,
+   > distinct owner users ⇒ distinct credentials. The env a pod talks to is decided by
+   > `DATABASE_URL` in its overlay's Bao path — never in the cluster spec.
    > The operator spreads instances across hosts with built-in pod anti-affinity
-   > and creates `blog-pg-postgres` (read/write) + `blog-pg-repl` (read-only) Services.
+   > and creates `lumen-pg-postgres` (read/write) + `lumen-pg-repl` (read-only) Services.
 
    **Option C — step by step** (rental day or growth from A; identical procedure, A→C is
    zero-downtime):
@@ -461,11 +468,11 @@ in this phase touches the VPS.
       then `kubectl label node worker-3 node-pool=data` — the CR's affinity
       `In [data, edge]` now matches a third node; no pool label invention needed.
    2. Edit the CR (one PR): `numberOfInstances: 3`, `synchronous_mode: 'true'`.
-   3. Argo syncs; the operator creates `blog-pg-2`, streams a basebackup from the leader,
+   3. Argo syncs; the operator creates `lumen-pg-2`, streams a basebackup from the leader,
       joins the cluster. Verify one member per worker:
       ```bash
-      kubectl -n db get pods -o wide        # blog-pg-0/1/2 on three different nodes
-      kubectl -n db exec blog-pg-0 -- patronictl list
+      kubectl -n db get pods -o wide        # lumen-pg-0/1/2 on three different nodes
+      kubectl -n db exec lumen-pg-0 -- patronictl list
       ```
    4. `synchronous_mode: true` semantics: each commit waits for **one** replica's WAL
       ack → losing any *single* worker cannot lose acknowledged data. Add
@@ -483,7 +490,7 @@ in this phase touches the VPS.
    `meilisearch` Application.
    * Deployment pinned `getmeili/meilisearch:v1.10.0`, `nodeSelector: { node-pool: edge }`,
      PVC 5 Gi, `MEILI_DB_PATH=/data`; exposes Prometheus metrics (annotated for Alloy).
-   * `Service` type `ClusterIP` only — **no IngressRoute, no NodePort**. The Go API reaches it
+   * `Service` type `ClusterIP` only — **no IngressRoute, no NodePort**. Lumen reaches it
      at `http://meilisearch.search.svc.cluster.local:7700` with the master key from a Secret
      (`meilisearch-master-key`, seeded at bootstrap → eventually via ExternalSecret, §5).
 
@@ -570,7 +577,7 @@ RED dashboards exist for every service even before apps instrument themselves.
    kubectl get nodes        # sanity check before touching anything else
    ```
 
-3. **Clone this repo and set the placeholders** (`yourusername`, `yourdomain.com`) in
+3. **Clone this repo and set the placeholders** (`cavadevop`, `ainurrofiq.com`) in
    `bootstrap/`, `apps/`, and `applications/*/kustomization.yaml` — then:
 
 4. **Apply the overlay (self-hosting bootstrap — the one manual apply):**
@@ -603,8 +610,8 @@ RED dashboards exist for every service even before apps instrument themselves.
 
 7. **If the manifests repo is PRIVATE, register credentials** (public repos skip this):
    ```bash
-   argocd repo add https://github.com/yourusername/k8s-platform-manifests.git \
-     --username yourusername --password <fine-grained-PAT: contents:read only>
+   argocd repo add https://github.com/cavadevop/k8s-platform-manifests.git \
+     --username cavadevop --password <fine-grained-PAT: contents:read only>
    ```
    Then apply the hub (`Phase 7`) — within ~2 min the dashboard shows every `apps/`
    Application auto-syncing green. Anything red: check repo-server logs first.
@@ -632,39 +639,28 @@ k8s-platform-manifests/
 ├── bootstrap/
 │   └── apps-hub.yaml              # root Application → path: apps/, recurse: false
 ├── apps/                          # Application definitions ONLY
-│   ├── blog-frontend-app.yaml
-│   ├── blog-backend-app.yaml
-│   ├── blog-db-app.yaml
-│   ├── observability-app.yaml
-│   ├── meilisearch-app.yaml
-│   └── ...                        # (argocd itself stays bootstrapped manually in Phase 6)
-├── applications/                  # raw manifests, one dir per app
-│   ├── blog-frontend/             # SvelteKit SSR site (repo: sv-fzr, adapter-node)
-│   │   ├── kustomization.yaml     # CI updates the image via `kustomize edit set image`
-│   │   ├── namespace.yaml
-│   │   ├── deployment.yaml
-│   │   ├── service.yaml
-│   │   └── ingress.yaml
-│   ├── blog-backend/
-│   │   ├── kustomization.yaml     # CI updates the image via `kustomize edit set image`
-│   │   ├── namespace.yaml
-│   │   ├── deployment.yaml
-│   │   └── service.yaml           # ClusterIP only — no Ingress (API is internal)
-│   ├── blog-db/
-│   │   ├── kustomization.yaml
-│   │   ├── namespace.yaml
-│   │   └── postgresql.yaml        # Zalando postgresql CR (Phase 4)
-│   ├── observability/             # Loki + VictoriaMetrics + Alloy DaemonSet + Grafana (Phase 5)
-│   │   ├── kustomization.yaml
-│   │   ├── namespace.yaml
-│   │   ├── loki.yaml
-│   │   ├── victoria-metrics.yaml
-│   │   ├── alloy.yaml
-│   │   └── grafana.yaml
-│   └── meilisearch/
-│       ├── kustomization.yaml
-│       ├── namespace.yaml
-│       └── meilisearch.yaml       # ClusterIP only, Phase 4.3
+│   ├── earendil-app.yaml          # SvelteKit SSR frontend (repo: sv-fzr)
+│   ├── lumen-app.yaml             # backend API (repo: fzr-backend) — cluster-internal
+│   ├── lumen-db-app.yaml          # Patroni PG (selfHeal off — DB guard)
+│   ├── observability-app.yaml     # Loki/VictoriaMetrics/Alloy/Grafana
+│   ├── meilisearch-app.yaml       # search — cluster-internal
+│   ├── openbao-app.yaml           # the values store (§5)
+│   ├── external-secrets-app.yaml  # ESO as an OCI Helm chart (Argo-managed)
+│   └── secrets-plane-app.yaml     # ClusterSecretStore `bao` (wave 1)
+├── applications/                  # raw manifests (bases), one kustomize dir per app —
+│   │                              # ESO-free so k3d works unchanged
+│   ├── earendil/                  # namespace/deployment/service/ingress
+│   ├── lumen/                     # namespace + http-server/worker deployments + service
+│   ├── lumen-db/                  # namespace + postgresql CR (lumen_staging/lumen_production)
+│   ├── observability/             # loki.yaml, victoria-metrics.yaml, grafana.yaml,
+│   │   └── alloy/                 # serviceaccount.yaml, alloy-daemonset.yaml,
+│   │                              # service.yaml, config.alloy (configMapGenerator)
+│   ├── meilisearch/               # deployment/pvc/service
+│   ├── openbao/                   # deployment/service/pvc + server.hcl
+│   └── secrets-plane/             # ClusterSecretStore bao (AppRole auth)
+├── overlays/                      # same bases + values sourced from Bao (kv/{app}/{env})
+│   ├── production/{earendil,lumen}/   # ExternalSecret (+ earendil envFrom patch)
+│   └── staging/{earendil,lumen}/      # twins: namespace + -staging suffix, shared DB-1
 └── platform/
     └── argocd/                    # Phase 6 overlay (pinned upstream + selector patches)
         ├── kustomization.yaml
@@ -683,7 +679,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: 'https://github.com/yourusername/k8s-platform-manifests.git'
+    repoURL: 'https://github.com/cavadevop/k8s-platform-manifests.git'
     targetRevision: HEAD
     path: apps/
     directory:
@@ -697,22 +693,22 @@ spec:
       selfHeal: true
 ```
 
-`apps/blog-backend-app.yaml` (example):
+`apps/lumen-app.yaml` (example):
 ```yaml
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: blog-backend
+  name: lumen
   namespace: argocd
 spec:
   project: default
   source:
-    repoURL: 'https://github.com/yourusername/k8s-platform-manifests.git'
+    repoURL: 'https://github.com/cavadevop/k8s-platform-manifests.git'
     targetRevision: HEAD
-    path: applications/blog-backend
+    path: applications/lumen
   destination:
     server: 'https://kubernetes.default.svc'
-    namespace: blog-backend
+    namespace: lumen
   syncPolicy:
     automated: { prune: true, selfHeal: true }
 ```
@@ -787,7 +783,7 @@ jobs:
       - name: Checkout Manifests Repo
         uses: actions/checkout@v4
         with:
-          repository: 'yourusername/k8s-platform-manifests'
+          repository: 'cavadevop/k8s-platform-manifests'
           token: ${{ secrets.MANIFESTS_REPO_PAT }}
 
       - name: Update Image Tag via Kustomize
@@ -795,8 +791,8 @@ jobs:
           # GHCR requires lowercase org/repo names; github.repository may not be.
           NEW_IMAGE: ghcr.io/${{ github.repository }}:${{ needs.build-and-push.outputs.version }}
         run: |
-          cd applications/blog-backend/
-          kustomize edit set image blog-backend=$(echo "$NEW_IMAGE" | tr '[:upper:]' '[:lower:]')
+          cd applications/lumen/
+          kustomize edit set image lumen=$(echo "$NEW_IMAGE" | tr '[:upper:]' '[:lower:]')
           git config user.name "GitHub Actions Bot"
           git config user.email "bot@github.com"
           git add .
@@ -804,14 +800,14 @@ jobs:
           git push
 
       # NOTE: imagePullSecrets required if GHCR packages are private:
-      #   kubectl -n blog-backend create secret docker-registry ghcr-pull \
+      #   kubectl -n lumen create secret docker-registry ghcr-pull \
       #     --docker-server=ghcr.io --docker-username=<gh-username> --docker-password=<PAT>
       #   ...and add imagePullSecrets: [{name: ghcr-pull}] to the Deployment spec.
 ```
 
 **Longer-term alternative:** Argo CD **Image Updater** watches GHCR tags directly and patches the Application's image parameter in-cluster — removes the manifest-commit hop and the PAT. Consider once more than 2–3 services ship.
 
-**Frontend deploys the same way:** the `sv-fzr` repo uses an identical workflow (it already ships a production `Dockerfile` for adapter-node), pointed at `applications/blog-frontend/` and `kustomize edit set image blog-frontend=…`. Only the manifests dir and image name differ.
+**Frontend deploys the same way:** the `sv-fzr` repo uses an identical workflow (it already ships a production `Dockerfile` for adapter-node), pointed at `applications/earendil/` and `kustomize edit set image earendil=…`. Only the manifests dir and image name differ.
 
 ---
 
@@ -863,16 +859,18 @@ real store; SOPS remains for **offline emergency seeds only** (§5.6).
 
 ```text
 kv/ (KV-v2 mount, max_versions=20, check-and-set enabled)
-├── staging/
-│   ├── blog-backend    # v1..  LOG_LEVEL, MEILI_KEY, ...
-│   └── blog-frontend   # v1..  ORIGIN=https://staging.yourdomain.com, ...
-└── prod/
-    ├── blog-backend    # v1..
-    └── blog-frontend   # v1..
+├── lumen/
+│   ├── staging     # v1..  DATABASE_URL, MEILI_*, LOG_LEVEL, ...
+│   └── production  # v1..
+└── earendil/
+    ├── staging     # v1..  ORIGIN=https://staging.ainurrofiq.com, API_BASE, ...
+    └── production  # v1..
 ```
 
-- **Environment** = path prefix (`kv/staging`, `kv/prod`); **app config set** = one path
-  per app; **version** = native KV-v2 integer history (diff, rollback, soft-delete).
+- **App config set** = one path prefix per app; **environment** = leaf; **version** =
+  native KV-v2 integer history (diff, rollback, soft-delete). Grouping by app reads
+  better in the portal and mirrors `overlays/<env>/<app>` in Git. ExternalSecret
+  `remoteRef.key` is mount-relative: `lumen/production`.
   There are no free-form "tags" — the `env/app` path convention *is* the tag.
 - Portal/admin UI integration talks to this same REST surface (§5.5).
 
@@ -881,10 +879,10 @@ kv/ (KV-v2 mount, max_versions=20, check-and-set enabled)
 One template per app, in the manifests repo — values-free, synced by Argo like anything else:
 
 ```yaml
-# applications/blog-frontend/externalsecret.yaml
+# applications/earendil/externalsecret.yaml
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
-metadata: { name: frontend-config, namespace: blog-frontend }
+metadata: { name: frontend-config, namespace: earendil }
 spec:
   refreshInterval: 1h          # drift-pull; set "none" for immutable pin-per-deploy
   target:
@@ -895,30 +893,30 @@ spec:
         PUBLIC_API_BASE: "/"
   data:
     - secretKey: API_BASE
-      remoteRef: { key: kv/ENV/blog-frontend, property: API_BASE, version: "PIN" }
+      remoteRef: { key: earendil/ENV, property: API_BASE, version: "PIN" }
   secretStoreRef: { name: bao, kind: ClusterSecretStore }
 ```
 
 The `ENV`/`PIN` placeholders are exactly what **kustomize overlays** substitute:
-`overlays/staging` rewrites key→`kv/staging/…`, `overlays/production` → `kv/prod/…`.
+`overlays/staging` rewrites key→`<app>/staging`, `overlays/production` → `<app>/production`.
 The app's base manifests never contain env-specific values, and `kustomize edit set image`
 (CI) + overlay pins (humans) touch disjoint files.
 
-> **Scaffolded:** [`overlays/production/blog-frontend/`](k8s-platform-manifests/overlays/production/blog-frontend/)
+> **Scaffolded:** [`overlays/production/earendil/`](k8s-platform-manifests/overlays/production/earendil/)
 > (JSON6902 patch swaps the inline env block for the ESO-rendered `app-config` ConfigMap)
-> and [`overlays/production/blog-backend/`](k8s-platform-manifests/overlays/production/blog-backend/)
-> (needs no patch — the base already declares `envFrom` `blog-backend-secrets` as
+> and [`overlays/production/lumen/`](k8s-platform-manifests/overlays/production/lumen/)
+> (needs no patch — the base already declares `envFrom` `lumen-secrets` as
 > `optional: true`, so ESO just *materializes* that Secret; k3d stays mock-friendly).
 > Going production = point that app's Application CR `source.path` at the overlay.
 
 ### 5.4 Promotion flow (staging → prod)
 
-1. `bao kv get -format=json kv/staging/blog-backend/<new>` → verify in staging.
-2. `bao kv put kv/prod/blog-backend <same data>` → creates a *new prod version* (history preserved on both sides).
+1. `bao kv get -format=json kv/data/lumen/staging` → verify in staging.
+2. `bao kv put kv/data/lumen/production <same data>` → creates a *new production version* (history preserved on both sides).
 3. One Git PR bumps the prod ExternalSecret's `version:` pin → Argo syncs → ESO re-renders → pods roll.
 
 Config deploys thus get the same audit trail as image deploys: PR + KV version + Argo history.
-(Script step 2 as `make promote APP=blog-backend FROM=staging TO=prod` — it's ~10 lines.)
+(Script step 2 as `make promote APP=lumen FROM=staging TO=prod` — it's ~10 lines.)
 
 ### 5.5 Portal integration (your admin UI)
 
@@ -927,14 +925,14 @@ realms; Bao ships `ui_csp_frame_ancestors` if ever needed as break-glass, mesh-o
 Minimal surface the portal needs:
 
 ```text
-GET  /v1/kv/metadata/<env>/<app>            # version list → "history" view
-GET  /v1/kv/data/<env>/<app>?version=N      # read a version (diff vs current)
-PUT  /v1/kv/data/<env>/<app>  (cas=N)       # save = new version, optimistic lock
+GET  /v1/kv/metadata/<app>/<env>            # version list → "history" view
+GET  /v1/kv/data/<app>/<env>?version=N      # read a version (diff vs current)
+PUT  /v1/kv/data/<app>/<env>  (cas=N)       # save = new version, optimistic lock
 ```
 
-- Portal authenticates with a dedicated **AppRole** (`secret/blog-portal` role), token TTL
+- Portal authenticates with a dedicated **AppRole** (`fzr-portal` role), token TTL
   ≤1 h with agent-based re-login, bound to worker CIDRs. Policy: `read` + `update` on
-  `kv/data/{staging,prod}/*` only — no root, no `list` on `sys/`.
+  `kv/data/+/*` (app-scoped roles preferred: `kv/data/lumen/*` for the lumen tab) — no root, no `list` on `sys/`.
 - Go client: `hashicorp/vault/api` works unmodified against OpenBao (wire-compatible).
 - Same API powers the CI **drift check**: every key in each repo's `env.yaml.sample` must
   exist in the rendered ExternalSecret's data list, and vice versa (~15-line job).
@@ -975,7 +973,7 @@ on `external_secret_ready` and `bao_unsealed` so a sealed store is loud, not sil
 
 ## 6. Backup / DR
 
-* **PostgreSQL:** nightly `pg_dump` of `blog_prod` (cronjob on worker-1, writes to a PVC,
+* **PostgreSQL:** nightly `pg_dump` of `lumen_production` (cronjob on worker-1, writes to a PVC,
   then uploads off-node — object storage or `restic` to a second location). Restore
   procedure documented and **tested once** before go-live.
 * **K3s datastore (kine/etcd):** `k3s server --snapshot` / bundled scheduled snapshots
