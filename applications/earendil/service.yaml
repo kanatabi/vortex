@@ -1,12 +1,12 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: blog-frontend
-  namespace: blog-frontend
+  name: earendil-web-server
+  namespace: earendil
 spec:
   type: ClusterIP
   selector:
-    app: blog-frontend
+    app: earendil-web-server
   ports:
     - name: http
       port: 80

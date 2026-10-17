@@ -1,19 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: blog-frontend
-  namespace: blog-frontend
+  name: earendil-web-server
+  namespace: earendil
   labels:
-    app: blog-frontend
+    app: earendil-web-server
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: blog-frontend
+      app: earendil-web-server
   template:
     metadata:
       labels:
-        app: blog-frontend
+        app: earendil-web-server
     spec:
       # NOTE: if GHCR packages are private, create an imagePullSecret in this namespace
       # and add: imagePullSecrets: [{name: ghcr-pull}]
@@ -31,11 +31,11 @@ spec:
           requiredDuringSchedulingIgnoredDuringExecution:
             - labelSelector:
                 matchLabels:
-                  app: blog-frontend
+                  app: earendil-web-server
               topologyKey: kubernetes.io/hostname
       containers:
-        - name: blog-frontend
-          image: blog-frontend
+        - name: earendil-web-server
+          image: earendil-web-server
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -45,10 +45,10 @@ spec:
             - name: PORT
               value: "3000"
             - name: ORIGIN
-              value: "https://yourdomain.com"
+              value: "https://ainurrofiq.com"
             # Server-side: internal service DNS (API has no public ingress)
             - name: API_BASE
-              value: "http://blog-backend.blog-backend.svc.cluster.local"
+              value: "http://lumen-http-server.lumen.svc.cluster.local"
             # Browser-side: "/" routes the search-suggest fetch to the SSR pod's
             # same-origin proxy (src/routes/api/[...path]/+server.ts)
             - name: PUBLIC_API_BASE
@@ -56,11 +56,11 @@ spec:
           # No dedicated health route; the root page renders 200 in SSR.
           readinessProbe:
             httpGet: { path: /, port: http }
-            initialDelaySeconds: 5
-            periodSeconds: 10
+            initialDelaySeconds: 30
+            periodSeconds: 60
           livenessProbe:
             httpGet: { path: /, port: http }
-            initialDelaySeconds: 15
+            initialDelaySeconds: 10
             periodSeconds: 20
           resources:
             requests: { cpu: 100m, memory: 192Mi }

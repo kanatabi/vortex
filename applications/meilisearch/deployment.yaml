@@ -1,15 +1,3 @@
-# Meilisearch — search backend for the blog API. CLUSTER-INTERNAL ONLY: no ingress,
-# no NodePort (access matrix §2). The Go API reaches it at
-# http://meilisearch.search.svc.cluster.local:7700 with the master key below.
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: meilisearch
-spec:
-  accessModes: [ReadWriteOnce]
-  storageClassName: local-path
-  resources: { requests: { storage: 5Gi } }
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -53,11 +41,3 @@ spec:
             requests: { cpu: 200m, memory: 384Mi }
             limits: { cpu: 500m, memory: 700Mi }
       volumes: [{ name: data, persistentVolumeClaim: { claimName: meilisearch } }]
----
-apiVersion: v1
-kind: Service
-metadata: { name: meilisearch }
-spec:
-  type: ClusterIP
-  selector: { app: meilisearch }
-  ports: [{ name: http, port: 7700, targetPort: http }]

@@ -1,8 +1,8 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: blog-backend
-  namespace: blog-backend
+  name: lumen
+  namespace: lumen
   # CLUSTER-INTERNAL ONLY by design: the SvelteKit SSR pods call this via service DNS,
   # and the browser's one client-side call (search suggest) is proxied same-origin
   # through the frontend. Do not add an Ingress here without revisiting §2 of
@@ -10,7 +10,7 @@ metadata:
 spec:
   type: ClusterIP
   selector:
-    app: blog-backend
+    app: lumen
   ports:
     - name: http
       port: 80

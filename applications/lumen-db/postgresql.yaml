@@ -5,7 +5,7 @@
 apiVersion: 'acid.zalan.do/v1'
 kind: postgresql
 metadata:
-  name: blog-pg
+  name: lumen-pg
   namespace: db
 spec:
   teamId: 'blog'
@@ -30,7 +30,7 @@ spec:
     requests: { cpu: '250m', memory: '512Mi' }
     limits: { cpu: '1000m', memory: '1Gi' }
   databases:
-    blog_prod: db_user
+    lumen_database: lumen
   users:
-    db_user:
+    lumen:
       - createdb

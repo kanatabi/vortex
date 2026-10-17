@@ -1,15 +1,16 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-namespace: blog-backend
+namespace: lumen
 
 resources:
   - namespace.yaml
-  - deployment.yaml
+  - http-server-deployment.yaml
+  - worker-deployment.yaml
   - service.yaml
 
 images:
   # CI updates newTag via `kustomize edit set image blog-backend=<ghcr image>:sha-<short>`
-  - name: blog-backend
-    newName: ghcr.io/yourusername/fzr-blog-api
+  - name: lumen
+    newName: ghcr.io/cavadevop/fzr-backend
     newTag: sha-local

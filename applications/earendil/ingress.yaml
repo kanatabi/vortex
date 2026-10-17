@@ -1,24 +1,24 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: blog-frontend
-  namespace: blog-frontend
+  name: earendil-web-server
+  namespace: earendil
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
 spec:
   ingressClassName: traefik
   rules:
-    - host: yourdomain.com
+    - host: ainurrofiq.com
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: blog-frontend
+                name: earendil-web-server
                 port:
                   name: http
   tls:
-    - secretName: blog-frontend-tls
+    - secretName: earendil-web-server-tls
       hosts:
-        - yourdomain.com
+        - ainurrofiq.com

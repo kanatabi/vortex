@@ -1,0 +1,102 @@
+// ================= sinks =================
+prometheus.remote_write "vm" {
+    endpoint { url = "http://victoria-metrics.observability.svc.cluster.local:8428/api/v1/write" }
+}
+
+loki.write "loki" {
+    endpoint { url = "http://loki.observability.svc.cluster.local:3100/loki/api/v1/push" }
+}
+
+// ================= pod logs: tail kubelet log files on this node =================
+local.file_match "pod_logs" {
+    path_targets = [{
+    __path__  = "/var/log/pods/*/*/*.log",
+    instance  = env("HOSTNAME"),
+    job       = "kubelet-pods",
+    }]
+}
+loki.source.file "pod_logs" {
+    targets    = local.file_match.pod_logs.targets
+    forward_to = [loki.write.loki.receiver]
+}
+
+// ================= master host logs: rsyslog forwarding lands here =================
+// master's /etc/rsyslog.d/50-omk3s.conf ships journald+daemon logs to :5514/udp
+loki.source.syslog "master" {
+    listener   { protocol = "udp" address = "0.0.0.0:5514" }
+    forward_to = [loki.write.loki.receiver]
+}
+
+// ================= metrics: kubelet + cAdvisor (covers master too) =================
+// Scrape every node's kubelet over its InternalIP:10250 with the pod's SA bearer;
+// k3s certs are self-signed. This is how the agentless master gets full coverage.
+discovery.kubernetes "nodes" { role = "node" }
+discovery.relabel "kubelet" {
+    targets = discovery.kubernetes.nodes.targets
+    rule {
+    action        = "replace"
+    source_labels = ["__meta_kubernetes_node_address_InternalIP"]
+    regex         = "(.+)"
+    target_label  = "__address__"
+    replacement   = "${1}:10250"
+    }
+    rule { action = "replace", target_label = "node", source_labels = ["__meta_kubernetes_node_name"] }
+}
+prometheus.scrape "kubelet" {
+    targets       = discovery.relabel.kubelet.output
+    scheme        = "https"
+    metrics_path  = "/metrics"
+    authorization = { type = "Bearer", credentials_file = "/var/run/secrets/kubernetes.io/serviceaccount/token" }
+    tls_config    = { insecure_skip_verify = true }
+    forward_to    = [prometheus.remote_write.vm.receiver]
+    job_name      = "kubelet"
+}
+prometheus.scrape "cadvisor" {
+    targets       = discovery.relabel.kubelet.output
+    scheme        = "https"
+    metrics_path  = "/metrics/cadvisor"
+    authorization = { type = "Bearer", credentials_file = "/var/run/secrets/kubernetes.io/serviceaccount/token" }
+    tls_config    = { insecure_skip_verify = true }
+    forward_to    = [prometheus.remote_write.vm.receiver]
+    job_name      = "cadvisor"
+}
+
+// ================= metrics: annotated app pods (the /metrics contract) =================
+// Pods opt in with prometheus.io/{scrape,port,path} annotations — see Phase 5.
+discovery.kubernetes "pods" { role = "pod" }
+discovery.relabel "pod_metrics" {
+    targets = discovery.kubernetes.pods.targets
+    rule { action = "keep", regex = "true", source_labels = ["__meta_kubernetes_pod_annotation_prometheus_io_scrape"] }
+    rule { action = "replace", regex = "(.+)", source_labels = ["__meta_kubernetes_pod_annotation_prometheus_io_path"], target_label = "__metrics_path__" }
+    rule { action = "replace", regex = "([^:]+)(?::\\d+)?;(\\d+)", separator = ";", source_labels = ["__address__", "__meta_kubernetes_pod_annotation_prometheus_io_port"], target_label = "__address__" }
+    rule { action = "labelmap", regex = "__meta_kubernetes_pod_label_(.+)" }
+    rule { action = "replace", source_labels = ["__meta_kubernetes_namespace"], target_label = "namespace" }
+    rule { action = "replace", source_labels = ["__meta_kubernetes_pod_name"], target_label = "pod" }
+}
+prometheus.scrape "pod_metrics" {
+    targets    = discovery.relabel.pod_metrics.output
+    forward_to = [prometheus.remote_write.vm.receiver]
+    job_name   = "annotated-pods"
+}
+
+// ================= OTLP ingest (metrics + logs; TRACES OFF — no Tempo) =================
+otelcol.receiver.otlp "in" {
+    grpc { endpoint = "0.0.0.0:4317" }
+    http { endpoint = "0.0.0.0:4318" }
+    metrics { output = otelcol.exporter.prometheus.m2vm.receiver }
+    logs    { output = otelcol.exporter.loki.m2loki.receiver }
+    // traces intentionally absent: no Tempo (§1). Enable when/if a trace store exists.
+}
+otelcol.exporter.prometheus "m2vm" {
+    add_job_labels = true
+    forward_to     = [prometheus.remote_write.vm.receiver]
+}
+otelcol.exporter.loki "m2loki" {
+    forward_to = [loki.write.loki.receiver]
+}
+
+// ================= statsd door (kept closed; enable ~free) =================
+// statsd.exporter "in" {
+//   listen { host = "0.0.0.0", port = 9412 }
+//   forward_to = [prometheus.remote_write.vm.receiver]
+// }

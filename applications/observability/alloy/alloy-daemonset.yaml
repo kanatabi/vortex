@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: alloy
+  labels: { app: alloy }
+spec:
+  selector:
+    matchLabels: { app: alloy }
+  template:
+    metadata:
+      labels: { app: alloy }
+    spec:
+      serviceAccountName: alloy
+      # workers only — the 2 GB master must not host an agent (Phase 5)
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-pool
+                    operator: In
+                    values: [data, edge]
+      containers:
+        - name: alloy
+          image: grafana/alloy:v1.4.0
+          args:
+            - run
+            - /etc/alloy/config.alloy
+            - --storage.path=/var/lib/alloy
+            - --server.http.listen-addr=0.0.0.0:12345
+          env:
+            - name: HOSTNAME
+              valueFrom: { fieldRef: { fieldPath: spec.nodeName } }
+          ports:
+            - { containerPort: 12345, name: http }
+            - { containerPort: 4317, name: otlp-grpc }
+            - { containerPort: 4318, name: otlp-http }
+            - { containerPort: 5514, name: syslog, protocol: UDP }
+          volumeMounts:
+            - { name: config, mountPath: /etc/alloy }
+            - { name: podlogs, mountPath: /var/log/pods, readOnly: true }
+            - { name: data, mountPath: /var/lib/alloy }
+          readinessProbe:
+            httpGet: { path: /-/ready, port: http }
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 300m, memory: 256Mi }
+      volumes:
+        - name: config
+          configMap: { name: alloy-config }
+        - name: podlogs
+          hostPath: { path: /var/log/pods }
+        - name: data
+          emptyDir: {}

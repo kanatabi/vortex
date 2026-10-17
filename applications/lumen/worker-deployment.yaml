@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lumen-worker
+  namespace: lumen
+  labels:
+    app: lumen-worker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: lumen-worker
+  template:
+    metadata:
+      labels:
+        app: lumen-worker
+      # Observability contract (architecture doc Phase 5): Alloy scrapes annotated pods.
+      # /metrics is served on an ADMIN port (9090) that no Service routes — unreachable
+      # from outside the pod by design.
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      # NOTE: if GHCR packages are private, create an imagePullSecret in this namespace
+      # and add: imagePullSecrets: [{name: ghcr-pull}]
+      affinity:
+        # Keep pods off the 2 GB master (node-pool=platform)
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-pool
+                    operator: NotIn
+                    values: ['platform']
+        # The two instances must never share a worker node
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: lumen
+              topologyKey: kubernetes.io/hostname
+      containers:
+        - name: lumen-worker
+          image: lumen
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          # Secrets (DB creds, Meilisearch key) come from a SOPS-managed Secret
+          # committed as *.secret.yaml — never plaintext. See INFRA_ARCHITECTURE.md §5.
+          envFrom:
+            - secretRef:
+                name: lumen-secrets
+                optional: true
+          readinessProbe:
+            httpGet: { path: /ping, port: http }
+            initialDelaySeconds: 30
+            periodSeconds: 60
+          livenessProbe:
+            httpGet: { path: /ping, port: http }
+            initialDelaySeconds: 30
+            periodSeconds: 60
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 300m, memory: 256Mi }

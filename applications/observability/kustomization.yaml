@@ -7,5 +7,5 @@ resources:
   - namespace.yaml
   - victoria-metrics.yaml
   - loki.yaml
-  - alloy.yaml
+  - alloy
   - grafana.yaml

@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - serviceaccount.yaml
+  - alloy-daemonset.yaml
+  - service.yaml
+
+# Reads your local file and builds the ConfigMap
+configMapGenerator:
+  - name: alloy-config
+    files:
+      - config.alloy
