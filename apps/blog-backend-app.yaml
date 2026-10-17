@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: blog-backend
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/yourusername/k8s-platform-manifests.git'
+    targetRevision: HEAD
+    path: applications/blog-backend
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: blog-backend
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

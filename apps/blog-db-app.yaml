@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: blog-db
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/yourusername/k8s-platform-manifests.git'
+    targetRevision: HEAD
+    path: applications/blog-db
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: db
+  syncPolicy:
+    automated:
+      prune: true
+      # selfHeal intentionally OFF for the DB app: a hand-executed failover or resized
+      # PVC should not be stomped by an automated Git sync mid-incident.
+      selfHeal: false
