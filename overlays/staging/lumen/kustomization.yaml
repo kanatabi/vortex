@@ -1,0 +1,12 @@
+# Staging twin of lumen: separate ns + suffix, but the SHARED Patroni cluster (DB-1) —
+# staging pods read DATABASE_URL -> .../lumen-pg-postgres.db.svc/lumen_staging.
+# Bao paths: kv/{app}/{env} -> values at kv/data/lumen/staging.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: lumen-staging
+nameSuffix: -staging
+
+resources:
+  - ../../../applications/lumen
+  - externalsecret.yaml

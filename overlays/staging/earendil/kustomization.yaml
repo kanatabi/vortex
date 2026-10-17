@@ -1,0 +1,35 @@
+# Staging twin of earendil, deployable on the SAME cluster as prod: the suffix +
+# namespace override keep it collision-free (earendil-staging ns, *-staging names).
+# RAM note: this doubles earendil's footprint — enable only while rehearsing.
+# Bao paths: kv/{app}/{env} -> values at kv/data/earendil/staging.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: earendil-staging
+nameSuffix: -staging
+
+resources:
+  - ../../../applications/earendil
+  - externalsecret.yaml
+
+patches:
+  - target:
+      kind: Deployment
+      name: earendil-web-server
+    patch: |-
+      - op: remove
+        path: /spec/template/spec/containers/0/env
+      - op: add
+        path: /spec/template/spec/containers/0/envFrom
+        value:
+          - configMapRef: { name: app-config }
+  - target:
+      kind: Ingress
+      name: earendil-web-server
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: staging.ainurrofiq.com
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: staging.ainurrofiq.com
