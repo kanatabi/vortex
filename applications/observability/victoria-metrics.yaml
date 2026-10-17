@@ -1,0 +1,49 @@
+# VictoriaMetrics single-node — the metrics TSDB ("M" slot of LGTM, replacing Mimir
+# per architecture decision). Alloy remote-writes here; Grafana queries via PromQL.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: victoria-metrics
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-path
+  resources: { requests: { storage: 10Gi } }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: victoria-metrics
+  labels: { app: victoria-metrics }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: victoria-metrics }
+  strategy: { type: Recreate }          # single-writer local-path volume
+  template:
+    metadata:
+      labels: { app: victoria-metrics }
+    spec:
+      nodeSelector: { node-pool: data }
+      containers:
+        - name: victoria-metrics
+          image: victoriametrics/victoria-metrics:v1.106.1
+          args:
+            - --storageDataPath=/storage
+            - --retentionPeriod=30d     # matches §1 sizing; raise later w/ disk headroom
+            - --httpListenAddr=:8428
+          ports: [{ containerPort: 8428, name: http }]
+          volumeMounts: [{ name: storage, mountPath: /storage }]
+          readinessProbe:
+            httpGet: { path: /health, port: http }
+          resources:
+            requests: { cpu: 200m, memory: 384Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+      volumes: [{ name: storage, persistentVolumeClaim: { claimName: victoria-metrics } }]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: victoria-metrics }
+spec:
+  type: ClusterIP
+  selector: { app: victoria-metrics }
+  ports: [{ name: http, port: 8428, targetPort: http }]

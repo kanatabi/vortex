@@ -1,0 +1,78 @@
+# Grafana UI — the "G". Queried by mesh-only operators; NO public ingress
+# (access matrix §2: reach it via port-forward or a mesh-restricted route added later).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grafana
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-path
+  resources: { requests: { storage: 1Gi } }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasources
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Loki
+        type: loki
+        access: proxy
+        url: http://loki.observability.svc.cluster.local:3100
+        isDefault: false
+      - name: VictoriaMetrics
+        type: prometheus
+        access: proxy
+        url: http://victoria-metrics.observability.svc.cluster.local:8428
+        isDefault: true
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  labels: { app: grafana }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: grafana }
+  strategy: { type: Recreate }
+  template:
+    metadata:
+      labels: { app: grafana }
+    spec:
+      nodeSelector: { node-pool: edge }
+      containers:
+        - name: grafana
+          image: grafana/grafana:11.2.0
+          ports: [{ containerPort: 3000, name: http }]
+          env:
+            # Seeded at bootstrap; eventually sourced via ExternalSecret (architecture §5)
+            - name: GF_SECURITY_ADMIN_USER
+              valueFrom: { secretKeyRef: { name: grafana-admin, key: user, optional: true } }
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              valueFrom: { secretKeyRef: { name: grafana-admin, key: password, optional: true } }
+            - name: GF_ANALYTICS_REPORTING_ENABLED
+              value: "false"
+          volumeMounts:
+            - { name: datasources, mountPath: /etc/grafana/provisioning/datasources }
+            - { name: data, mountPath: /var/lib/grafana }
+          readinessProbe:
+            httpGet: { path: /api/health, port: http }
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 300m, memory: 256Mi }
+      volumes:
+        - name: datasources
+          configMap: { name: grafana-datasources }
+        - name: data
+          persistentVolumeClaim: { claimName: grafana }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: grafana }
+spec:
+  type: ClusterIP
+  selector: { app: grafana }
+  ports: [{ name: http, port: 3000, targetPort: http }]

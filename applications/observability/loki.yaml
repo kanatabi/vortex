@@ -1,0 +1,89 @@
+# Loki single-binary — logs store. 7-day retention, tsdb schema, filesystem storage.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: loki-config
+data:
+  loki.yaml: |
+    auth_enabled: false
+    server:
+      http_listen_port: 3100
+      grpc_listen_port: 9095
+    common:
+      instance_addr: 127.0.0.1
+      path_prefix: /loki
+      storage: { filesystem: { chunks_directory: /loki/chunks, rules_directory: /loki/rules } }
+      replication_factor: 1
+    schema_config:
+      configs:
+        - from: 2024-01-01
+          store: tsdb
+          object_store: filesystem
+          schema: v13
+          index: { prefix: index_ , period: 24h }
+    limits_config:
+      retention_period: 168h            # 7 days per §1 budget
+      ingestion_rate_mb: 2
+      ingestion_burst_size_mb: 6
+    compactor:
+      working_directory: /loki/compactor
+      retention_enabled: true
+      delete_request_store: filesystem
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: loki
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-path
+  resources: { requests: { storage: 15Gi } }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: loki
+  labels: { app: loki }
+spec:
+  replicas: 1
+  serviceName: loki
+  selector:
+    matchLabels: { app: loki }
+  template:
+    metadata:
+      labels: { app: loki }
+    spec:
+      nodeSelector: { node-pool: data }
+      containers:
+        - name: loki
+          image: grafana/loki:3.1.0
+          args: [-config.file=/etc/loki/loki.yaml]
+          ports:
+            - { containerPort: 3100, name: http }
+            - { containerPort: 9095, name: grpc }
+          volumeMounts:
+            - { name: config, mountPath: /etc/loki }
+            - { name: data, mountPath: /loki }
+          readinessProbe:
+            httpGet: { path: /ready, port: http }
+            initialDelaySeconds: 10
+          resources:
+            requests: { cpu: 200m, memory: 512Mi }
+            limits: { cpu: 500m, memory: 800Mi }
+      volumes:
+        - name: config
+          configMap: { name: loki-config }
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: local-path
+        resources: { requests: { storage: 15Gi } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: loki }
+spec:
+  type: ClusterIP
+  selector: { app: loki }
+  ports: [{ name: http, port: 3100, targetPort: http }]

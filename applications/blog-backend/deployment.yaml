@@ -14,6 +14,13 @@ spec:
     metadata:
       labels:
         app: blog-backend
+      # Observability contract (architecture doc Phase 5): Alloy scrapes annotated pods.
+      # /metrics is served on an ADMIN port (9090) that no Service routes — unreachable
+      # from outside the pod by design.
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
     spec:
       # NOTE: if GHCR packages are private, create an imagePullSecret in this namespace
       # and add: imagePullSecrets: [{name: ghcr-pull}]

@@ -1,0 +1,63 @@
+# Meilisearch — search backend for the blog API. CLUSTER-INTERNAL ONLY: no ingress,
+# no NodePort (access matrix §2). The Go API reaches it at
+# http://meilisearch.search.svc.cluster.local:7700 with the master key below.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: meilisearch
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-path
+  resources: { requests: { storage: 5Gi } }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: meilisearch
+  labels: { app: meilisearch }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: meilisearch }
+  strategy: { type: Recreate }           # single-writer local-path volume
+  template:
+    metadata:
+      labels: { app: meilisearch }
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "7700"
+        prometheus.io/path: "/metrics"   # Meilisearch exposes Prometheus-format metrics
+    spec:
+      nodeSelector: { node-pool: edge }
+      containers:
+        - name: meilisearch
+          image: getmeili/meilisearch:v1.10.0
+          env:
+            - name: MEILI_DB_PATH
+              value: /data
+            - name: MEILI_ENV
+              value: production
+            - name: MEILI_NO_ANALYTICS
+              value: "true"
+            # Master key seeded at bootstrap; eventually via ExternalSecret/OpenBao
+            # (architecture doc §5). optional:true so first deploy can start unkeyed
+            # in k3d — production MUST set it.
+            - name: MEILI_MASTER_KEY
+              valueFrom: { secretKeyRef: { name: meilisearch-master-key, key: master-key, optional: true } }
+          ports: [{ containerPort: 7700, name: http }]
+          volumeMounts: [{ name: data, mountPath: /data }]
+          readinessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 200m, memory: 384Mi }
+            limits: { cpu: 500m, memory: 700Mi }
+      volumes: [{ name: data, persistentVolumeClaim: { claimName: meilisearch } }]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: meilisearch }
+spec:
+  type: ClusterIP
+  selector: { app: meilisearch }
+  ports: [{ name: http, port: 7700, targetPort: http }]

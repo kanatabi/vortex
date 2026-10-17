@@ -39,7 +39,7 @@ Memory limits must stay **below** allocatable RAM (node OS + kubelet reserve ~50
 | Patroni PostgreSQL (Replica) | worker-2 | 250m/512Mi | 1 CPU/1Gi | 10 Gi |
 | Loki | worker-1 | 200m/512Mi | 500m/800Mi | 15 Gi (7d retention) |
 | VictoriaMetrics | worker-1 | 200m/384Mi | 500m/512Mi | 10 Gi |
-| Grafana Alloy | worker-1 | 100m/128Mi | 300m/256Mi | — |
+| Grafana Alloy (DaemonSet, 1 per worker) | worker-1 & 2 | 100m/128Mi each | 300m/256Mi each | — |
 | Grafana UI | worker-2 | 100m/128Mi | 300m/256Mi | 1 Gi |
 | Meilisearch | worker-2 | 200m/384Mi | 500m/700Mi | 5 Gi |
 | Go API (2 instances) | worker-1 & 2 | 100m/128Mi each | 300m/256Mi each | — |
@@ -355,6 +355,7 @@ in this phase touches the VPS.
      --set nodeSelector.node-pool=edge \
      --set service.externalTrafficPolicy=Local \
      --set providers.kubernetesCRD.enabled=true \
+     --set additionalArguments[0]="--metrics.prometheus" \
      --set "ports.web.redirectTo=websecure" \
      --set "ports.websecure.tls.enabled=true"
    ```
@@ -477,22 +478,64 @@ in this phase touches the VPS.
    kubectl apply -f https://raw.githubusercontent.com/zalando/postgres-operator/v1.13.0/manifests/operator-manifests.yaml
    ```
 
-3. **Meilisearch (namespace `search`), internal-only:**
-   * Deployment with `nodeSelector: { node-pool: edge }`, PVC 5 Gi, `MEILI_DB_PATH=/data`.
+3. **Meilisearch (namespace `search`), internal-only:** scaffolded in Git —
+   [`applications/meilisearch/`](k8s-platform-manifests/applications/meilisearch/), synced as the
+   `meilisearch` Application.
+   * Deployment pinned `getmeili/meilisearch:v1.10.0`, `nodeSelector: { node-pool: edge }`,
+     PVC 5 Gi, `MEILI_DB_PATH=/data`; exposes Prometheus metrics (annotated for Alloy).
    * `Service` type `ClusterIP` only — **no IngressRoute, no NodePort**. The Go API reaches it
-     at `http://meilisearch.search.svc.cluster.local:7700` with an API key from a Secret.
+     at `http://meilisearch.search.svc.cluster.local:7700` with the master key from a Secret
+     (`meilisearch-master-key`, seeded at bootstrap → eventually via ExternalSecret, §5).
 
 4. **Host OS tuning:** `vm.max_map_count` and the swapfile were applied to all nodes in the
    Phase 2 host-prep step — no additional per-node tuning needed here.
 
 ---
 
-### Phase 5: Observability — Grafana LGTM
+### Phase 5: Observability — Grafana LGTM (+VM) with Alloy DaemonSet
 
-* **worker-1 (`node-pool=data`):** Loki (15 Gi PVC, 7-day retention), VictoriaMetrics (10 Gi), Grafana Alloy (scrape/log shipper).
-* **worker-2 (`node-pool=edge`):** Grafana UI (1 Gi PVC), datasources pointed at Loki/VM **service DNS** (`http://loki.observability.svc.cluster.local:3100`, `http://victoria-metrics.observability.svc.cluster.local:8428`).
-* All observability `IngressRoute`s are **mesh-private** (NetBird-only, basic-auth or none — never exposed publicly), per §2.
-* Apply the resource requests/limits from the §1 budget table verbatim. Loki's `-store.tsdb.max-block-duration` and retention config live in its Git manifest, since a misconfigured Loki will fill the 60 GB disk first.
+Scaffolded in Git: [`applications/observability/`](k8s-platform-manifests/applications/observability/)
+— synced by the hub as the `observability` Application.
+
+**Agent topology (the decision that matters on 4 GB workers):** Alloy is a
+**per-node DaemonSet on the `data`+`edge` pools — NOT per-app sidecars.** 3 agents total
+vs ~10 sidecars, apps stay observability-agnostic, one config to manage. The master gets
+full coverage **without an agent** (2 GB has no room for ~150 Mi of Alloy):
+
+* **metrics:** each worker's Alloy remotely scrapes ALL nodes' kubelet + cAdvisor
+  (`InternalIP:10250`, SA bearer, self-signed allowed) — including the master.
+* **logs:** master runs stock **rsyslog** forwarding (~20 Mi, already resident) into the
+  Alloy syslog listener on worker-1:
+  ```bash
+  # on the master: /etc/rsyslog.d/50-loki.conf
+  echo '*.* @10.<worker1-internal>:5514;RSYSLOG_SyslogProtocol23Format' | sudo tee /etc/rsyslog.d/50-loki.conf
+  sudo systemctl restart rsyslog
+  ```
+* **pod logs:** file-tailing `/var/log/pods` on each worker (hostPath, read-only).
+
+**Sinks:** Alloy `prometheus.remote_write` → VictoriaMetrics (`:8428`, 30d retention,
+worker-1); `loki.write` → Loki (`:3100`, tsdb schema, 168h retention, worker-1,
+PVC sizes per §1). Grafana UI on worker-2 with both datasources provisioned; **no public
+ingress** (§2 — port-forward or mesh-restricted route only).
+
+**OTLP ingest (forward path for the Go backend's OTel SDK):** Alloy is an OTel Collector
+distribution — `otelcol.receiver.otlp` on :4317/:4318 fans metrics→VM, logs→Loki via the
+alloy-otlp service: `OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy-otlp.observability.svc.cluster.local:4317`.
+**Traces are intentionally OFF** (no Tempo by decision; adopting one later is an infra
+add, not a code rewrite). A **StatsD listener** is present-but-commented in the Alloy
+config as a free door for statsd-only components someday.
+
+**Application contract (what app pods owe the pipeline):**
+1. Logs → stdout/stderr, structured (JSON) where practical. Zero SDK required.
+2. Metrics → Prometheus text format on a dedicated **admin port (9090)** that no Service
+   routes, plus pod annotations `prometheus.io/{scrape,port,path}` — Alloy's
+   annotated-pods job discovers them automatically. Go recipe (`client_golang`, RED
+   middleware, runtime collectors) — keep low-cardinality labels; this, not OTLP, is the
+   default metrics path.
+3. No per-app agents, sidecars, or env plumbing — the annotation *is* the contract.
+
+Traefik exposes Prometheus metrics natively → enable it (`--metrics.prometheus=true`) so
+RED dashboards exist for every service even before apps instrument themselves.
 
 ---
 
