@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: blog-frontend
+  namespace: blog-frontend
+  labels:
+    app: blog-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: blog-frontend
+  template:
+    metadata:
+      labels:
+        app: blog-frontend
+    spec:
+      # NOTE: if GHCR packages are private, create an imagePullSecret in this namespace
+      # and add: imagePullSecrets: [{name: ghcr-pull}]
+      affinity:
+        # SSR pods are lightweight (Node renders HTML) — keep them off the 2 GB master
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-pool
+                    operator: NotIn
+                    values: ['platform']
+        # One instance per worker node
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: blog-frontend
+              topologyKey: kubernetes.io/hostname
+      containers:
+        - name: blog-frontend
+          image: blog-frontend
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3000
+          env:
+            # adapter-node listen port + canonical origin for SSR redirects/CSP
+            - name: PORT
+              value: "3000"
+            - name: ORIGIN
+              value: "https://yourdomain.com"
+            # Server-side: internal service DNS (API has no public ingress)
+            - name: API_BASE
+              value: "http://blog-backend.blog-backend.svc.cluster.local"
+            # Browser-side: "/" routes the search-suggest fetch to the SSR pod's
+            # same-origin proxy (src/routes/api/[...path]/+server.ts)
+            - name: PUBLIC_API_BASE
+              value: "/"
+          # No dedicated health route; the root page renders 200 in SSR.
+          readinessProbe:
+            httpGet: { path: /, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /, port: http }
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests: { cpu: 100m, memory: 192Mi }
+            limits: { cpu: 300m, memory: 384Mi }

@@ -1,0 +1,34 @@
+# Requires Zalando's Postgres Operator installed first (INFRA_ARCHITECTURE.md, Phase 4):
+#   kubectl apply -f https://raw.githubusercontent.com/zalando/postgres-operator/v1.13.0/manifests/operator-manifests.yaml
+apiVersion: 'acid.zalan.do/v1'
+kind: postgresql
+metadata:
+  name: blog-pg
+  namespace: db
+spec:
+  teamId: 'blog'
+  volume:
+    size: 10Gi
+    storageClass: 'local-path'
+  numberOfInstances: 2
+  node_affinity:                      # keep DB pods off the 2 GB master
+    matchExpressions:
+      - key: node-pool
+        operator: In
+        values: ['data', 'edge']
+  patroni:
+    initdb:
+      encoding: 'UTF8'
+      data-checksums: 'true'
+    ttl: '30'
+    loop_wait: '10'
+    retry_timeout: '10'
+    synchronous_mode: 'false'
+  resources:
+    requests: { cpu: '250m', memory: '512Mi' }
+    limits: { cpu: '1000m', memory: '1Gi' }
+  databases:
+    blog_prod: db_user
+  users:
+    db_user:
+      - createdb

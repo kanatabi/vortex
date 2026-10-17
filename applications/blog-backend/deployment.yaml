@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: blog-backend
+  namespace: blog-backend
+  labels:
+    app: blog-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: blog-backend
+  template:
+    metadata:
+      labels:
+        app: blog-backend
+    spec:
+      # NOTE: if GHCR packages are private, create an imagePullSecret in this namespace
+      # and add: imagePullSecrets: [{name: ghcr-pull}]
+      affinity:
+        # Keep pods off the 2 GB master (node-pool=platform)
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-pool
+                    operator: NotIn
+                    values: ['platform']
+        # The two instances must never share a worker node
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: blog-backend
+              topologyKey: kubernetes.io/hostname
+      containers:
+        - name: blog-backend
+          image: blog-backend
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          # Secrets (DB creds, Meilisearch key) come from a SOPS-managed Secret
+          # committed as *.secret.yaml — never plaintext. See INFRA_ARCHITECTURE.md §5.
+          envFrom:
+            - secretRef:
+                name: blog-backend-secrets
+                optional: true
+          readinessProbe:
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 300m, memory: 256Mi }
