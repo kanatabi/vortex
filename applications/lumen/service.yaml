@@ -9,8 +9,10 @@ metadata:
   # INFRA_ARCHITECTURE.md.
 spec:
   type: ClusterIP
+  # http-server pods ONLY — the worker runs the same image but must never receive
+  # API traffic. (The old `app: lumen` selector matched zero pods.)
   selector:
-    app: lumen
+    app: lumen-http-server
   ports:
     - name: http
       port: 80

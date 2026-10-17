@@ -10,7 +10,7 @@ resources:
   - service.yaml
 
 images:
-  # CI updates newTag via `kustomize edit set image blog-backend=<ghcr image>:sha-<short>`
+  # CI updates newTag via `kustomize edit set image lumen=<ghcr image>:sha-<short>`
   - name: lumen
     newName: ghcr.io/cavadevop/fzr-backend
     newTag: sha-local

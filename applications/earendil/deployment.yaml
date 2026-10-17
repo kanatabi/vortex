@@ -35,7 +35,7 @@ spec:
               topologyKey: kubernetes.io/hostname
       containers:
         - name: earendil-web-server
-          image: earendil-web-server
+          image: earendil
           imagePullPolicy: IfNotPresent
           ports:
             - name: http

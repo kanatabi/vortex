@@ -1,3 +1,7 @@
+# lumen runs ONE codebase as two processes: http-server serves the API that earendil
+# calls (internal DNS only); this deployment runs the same image as background WORKERS
+# (jobs/queues). Independent by design: 1 replica, own scheduling, never behind the
+# Service. Shares the image + lumen-secrets; runs its own /ping + admin :9090.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -5,8 +9,10 @@ metadata:
   namespace: lumen
   labels:
     app: lumen-worker
+    app.kubernetes.io/name: lumen
+    app.kubernetes.io/component: worker
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: lumen-worker
@@ -14,6 +20,8 @@ spec:
     metadata:
       labels:
         app: lumen-worker
+        app.kubernetes.io/name: lumen
+        app.kubernetes.io/component: worker
       # Observability contract (architecture doc Phase 5): Alloy scrapes annotated pods.
       # /metrics is served on an ADMIN port (9090) that no Service routes — unreachable
       # from outside the pod by design.
@@ -25,7 +33,8 @@ spec:
       # NOTE: if GHCR packages are private, create an imagePullSecret in this namespace
       # and add: imagePullSecrets: [{name: ghcr-pull}]
       affinity:
-        # Keep pods off the 2 GB master (node-pool=platform)
+        # Keep pods off the 2 GB master (node-pool=platform). NO podAntiAffinity:
+        # single replica, scheduled independently of http-server on purpose.
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
@@ -33,13 +42,6 @@ spec:
                   - key: node-pool
                     operator: NotIn
                     values: ['platform']
-        # The two instances must never share a worker node
-        podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchLabels:
-                  app: lumen
-              topologyKey: kubernetes.io/hostname
       containers:
         - name: lumen-worker
           image: lumen
@@ -47,8 +49,9 @@ spec:
           ports:
             - name: http
               containerPort: 8080
-          # Secrets (DB creds, Meilisearch key) come from a SOPS-managed Secret
-          # committed as *.secret.yaml — never plaintext. See INFRA_ARCHITECTURE.md §5.
+          # Secrets (DB creds, Meilisearch key) arrive via lumen-secrets: rendered
+          # in-cluster by ESO from OpenBao in production overlays (INFRA doc §5);
+          # optional in k3d/dev.
           envFrom:
             - secretRef:
                 name: lumen-secrets

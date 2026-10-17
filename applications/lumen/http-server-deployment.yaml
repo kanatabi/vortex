@@ -5,6 +5,8 @@ metadata:
   namespace: lumen
   labels:
     app: lumen-http-server
+    app.kubernetes.io/name: lumen
+    app.kubernetes.io/component: http-server
 spec:
   replicas: 2
   selector:
@@ -14,6 +16,8 @@ spec:
     metadata:
       labels:
         app: lumen-http-server
+        app.kubernetes.io/name: lumen
+        app.kubernetes.io/component: http-server
       # Observability contract (architecture doc Phase 5): Alloy scrapes annotated pods.
       # /metrics is served on an ADMIN port (9090) that no Service routes — unreachable
       # from outside the pod by design.
@@ -33,12 +37,12 @@ spec:
                   - key: node-pool
                     operator: NotIn
                     values: ['platform']
-        # The two instances must never share a worker node
+        # The two http-server instances must never share a worker node
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             - labelSelector:
                 matchLabels:
-                  app: lumen
+                  app: lumen-http-server
               topologyKey: kubernetes.io/hostname
       containers:
         - name: lumen-http-server
@@ -47,8 +51,9 @@ spec:
           ports:
             - name: http
               containerPort: 8080
-          # Secrets (DB creds, Meilisearch key) come from a SOPS-managed Secret
-          # committed as *.secret.yaml — never plaintext. See INFRA_ARCHITECTURE.md §5.
+          # Secrets (DB creds, Meilisearch key) arrive via lumen-secrets: rendered
+          # in-cluster by ESO from OpenBao in production overlays (INFRA doc §5);
+          # optional in k3d/dev.
           envFrom:
             - secretRef:
                 name: lumen-secrets
