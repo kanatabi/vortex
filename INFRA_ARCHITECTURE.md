@@ -548,7 +548,8 @@ RED dashboards exist for every service even before apps instrument themselves.
 1. **Repository structure for Argo CD's own install:**
    ```text
    platform/argocd/
-   ├── kustomization.yaml         # pinned upstream install.yaml + patches
+   ├── kustomization.yaml         # Namespace + pinned upstream install.yaml + patches
+   ├── namespace.yaml             # the argocd Namespace (upstream install.yaml omits it)
    ├── pinning-patch.yaml         # JSON6902 nodeSelector { node-pool: platform } applied by
    │                               #   labelSelector app.kubernetes.io/part-of=argocd to EVERY
    │                               #   Argo Deployment + StatefulSet (future components included)
@@ -559,17 +560,61 @@ RED dashboards exist for every service even before apps instrument themselves.
    The overlay must cover **all** components — pinning only server/repo/controller leaves
    redis, dex, notifications and applicationset floating onto worker nodes.
 
-2. **Apply once (self-hosting bootstrap):**
+2. **Prepare kubectl (once, on the machine you administer from):**
    ```bash
-   kubectl apply -k platform/argocd/
+   # from the master over the mesh — or just work ON the master:
+   scp user@<MASTER_NETBIRD_IP>:/etc/rancher/k3s/k3s.yaml ~/.kube/fzr-blog.yaml
+   export KUBECONFIG=~/.kube/fzr-blog.yaml
+   # on the master node itself:
+   export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+   kubectl get nodes        # sanity check before touching anything else
    ```
 
-3. **Fetch Initial Admin Credentials — and dispose of them:**
+3. **Clone this repo and set the placeholders** (`yourusername`, `yourdomain.com`) in
+   `bootstrap/`, `apps/`, and `applications/*/kustomization.yaml` — then:
+
+4. **Apply the overlay (self-hosting bootstrap — the one manual apply):**
    ```bash
-   kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
-   # After first login: change the password (or switch to Dex SSO / RBAC tokens), then:
+   kubectl apply -k platform/argocd/
+   kubectl -n argocd rollout status deploy/argocd-server --timeout=5m
+   for d in argocd-repo-server argocd-redis argocd-dex-server \
+            argocd-applicationset-controller argocd-notifications-controller; do
+     kubectl -n argocd rollout status deploy/$d --timeout=5m
+   done
+   kubectl -n argocd rollout status statefulset/argocd-application-controller --timeout=5m
+   ```
+
+5. **Verify isolation before trusting it:**
+   ```bash
+   kubectl -n argocd get pods -o wide
+   # ALL 7 workloads must show NODE=master-node; anything on a worker means the
+   # node-pool=platform label (Phase 2.5) or the pinning patch went missing.
+   kubectl -n argocd top pods        # sums must sit inside the §1 budget (~800Mi req)
+   ```
+
+6. **First login, then dispose of the seed credential:**
+   ```bash
+   kubectl -n argocd port-forward svc/argocd-server 8080:443 &   # over the mesh; self-signed cert
+   PASS=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)
+   # UI https://localhost:8080  → admin / $PASS  → change password (user icon), or CLI:
+   #   argocd login localhost:8080 --insecure && argocd account update-password
    kubectl -n argocd delete secret argocd-initial-admin-secret
    ```
+
+7. **If the manifests repo is PRIVATE, register credentials** (public repos skip this):
+   ```bash
+   argocd repo add https://github.com/yourusername/k8s-platform-manifests.git \
+     --username yourusername --password <fine-grained-PAT: contents:read only>
+   ```
+   Then apply the hub (`Phase 7`) — within ~2 min the dashboard shows every `apps/`
+   Application auto-syncing green. Anything red: check repo-server logs first.
+
+8. **Upgrade runbook (the only sanctioned way Argo changes itself):**
+   Bump the pinned `install.yaml` version URL in `platform/argocd/kustomization.yaml`
+   on a branch → `kubectl kustomize platform/argocd/ | grep -c 'node-pool: platform'`
+   must still equal the component count → `kubectl apply -k` → re-run step 4's waits →
+   verify step 5 → merge. Never edit the live install otherwise; a floating tag here
+   would let Argo self-modify outside review.
 
 ---
 
