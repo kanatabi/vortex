@@ -1,3 +1,9 @@
+# lumen-db — the Patroni PostgreSQL cluster USED BY LUMEN (the backend). Zalando
+# operator CR in namespace `db`; Services: lumen-pg-postgres (read/write) and
+# lumen-pg-repl (read-only). ONE shared cluster, two databases — lumen_staging /
+# lumen_production with distinct owner users — the per-env split happens in the
+# overlay's DATABASE_URL (INFRA doc §5). Topology Option A (2 instances/2 workers);
+# Option C (3 instances + synchronous_mode) is a documented one-PR change, Phase 4.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 

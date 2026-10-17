@@ -1,16 +1,9 @@
+# earendil — the blog FRONTEND. SvelteKit 3 SSR app (adapter-node, source repo:
+# sv-fzr) serving https://ainurrofiq.com. Also hosts the same-origin /api proxy
+# that carries the browser's only client-side call to the cluster-internal backend
+# (lumen). No VITE_* build-time env — runtime ORIGIN/API_BASE/PUBLIC_API_BASE only,
+# so one image runs in every environment (see overlays/).
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 namespace: earendil
-
-resources:
-  - namespace.yaml
-  - deployment.yaml
-  - service.yaml
-  - ingress.yaml
-
-images:
-  # CI updates newTag via `kustomize edit set image earendil=<ghcr image>:sha-<short>`
-  - name: earendil
-    newName: ghcr.io/cavadevop/earendil
-    newTag: sha-local

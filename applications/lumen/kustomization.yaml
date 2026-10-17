@@ -1,16 +1,10 @@
+# lumen — the blog BACKEND API (source repo: fzr-backend; one codebase, two
+# processes). http-server pods serve the API that earendil calls via internal
+# DNS (NO public ingress — access matrix §2); worker pods run background jobs
+# independently (1 replica, own scheduling, never behind the Service). Reads
+# lumen-secrets (ESO-rendered from OpenBao in prod overlays); /metrics on the
+# unrouted admin :9090 per the Alloy scrape contract.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 namespace: lumen
-
-resources:
-  - namespace.yaml
-  - http-server-deployment.yaml
-  - worker-deployment.yaml
-  - service.yaml
-
-images:
-  # CI updates newTag via `kustomize edit set image lumen=<ghcr image>:sha-<short>`
-  - name: lumen
-    newName: ghcr.io/cavadevop/fzr-backend
-    newTag: sha-local
