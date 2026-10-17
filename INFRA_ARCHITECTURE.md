@@ -20,6 +20,10 @@
 
 * **Total Monthly Investment:** **IDR 387,000 / month** (~$24–$25 USD/mo).
 
+* **Networking:** node↔node traffic rides either a **GIO VPC** (Path A, preferred — if
+  available on NEO Lite; verify at rental per Phase 1) or the **NetBird mesh** (Path B).
+  NetBird is always the admin plane. Full decision table: Phase 2.
+
 ### Node Resource Budget (requests / limits)
 
 Memory limits must stay **below** allocatable RAM (node OS + kubelet reserve ~500–700 MB).
@@ -99,6 +103,9 @@ flowchart TB
 ```
 
 Reading guide:
+0. **Node network:** all traffic *between the three nodes* (API, pod overlay, replication)
+   rides the private plane chosen in Phase 2 — Path A (GIO VPC) or Path B (mesh). NetBird
+   *always* serves the laptop→cluster admin path regardless of that choice.
 1. **Ship code:** push app repo → CI builds image to GHCR and commits the new tag into the manifests repo.
 2. **Sync:** Argo (watching the manifests repo) applies the diff; `prune + selfHeal` keeps the cluster honest.
 3. **Config/secret render:** Argo applies `ExternalSecret` templates; ESO pulls the *values* from OpenBao (version-pinned per environment overlay) and materializes in-cluster ConfigMaps/Secrets that pods read as env.
@@ -118,7 +125,7 @@ Reading guide:
 | **Meilisearch** | **Cluster-internal only** | `http://meilisearch.search.svc.cluster.local:7700` | No public or mesh ingress; API-only access |
 | **OpenBao (config/secrets store)** | **Cluster-internal + admin API** | `http://bao.secrets.svc.cluster.local:8200` | AppRole/periodic tokens; built-in UI mesh-only behind Traefik private route; never public |
 | **External Secrets Operator** | **Cluster-internal only** | `eso-controller.external-secrets.svc` | Watches ExternalSecret CRs, writes rendered objects; no ingress |
-| **K3s Control Plane API (`:6443`)** | **Private (VPN Only)** | `https://<MASTER_NETBIRD_IP>:6443` | Restricted to NetBird Mesh Network |
+| **K3s Control Plane API (`:6443`)** | **Private (VPC + VPN mesh)** | Path A: `https://<MASTER_VPC_IP>:6443` (nodes) + `https://<MASTER_NETBIRD_IP>:6443` (laptop) · Path B: mesh only | Dual `--tls-san`; public exposure never (ufw/SG-restricted per Phase 2.4) |
 | **Node Terminal Access (SSH)** | **Private (VPN Only)** | `ssh <USER>@<NETBIRD_NODE_IP>` | NetBird mesh SSH (Port 22 closed publicly; root login disabled after mesh SSH verified) |
 
 > **Note on NetBird "Keyless SSO SSH":** identity-aware keyless SSH requires the **NetBird Enterprise plan or a self-hosted NetBird server with SSO configured**. On the free plan, SSH over the mesh still works with normal key authentication — the security model above (public port 22 closed, mesh-only) is unaffected.
@@ -141,12 +148,44 @@ Managed via your external DNS provider (Cloudflare, Namecheap, Route53, etc.):
 ### C. Private VPN Mesh DNS (Automatic via NetBird)
 * Managed by **NetBird Magic DNS**.
 * Connects your local machine and nodes seamlessly using hostname aliases (`master-node`, `worker-1`, `worker-2`) without editing local `/etc/hosts` files or running custom BIND servers.
+* **Scope note:** under Path A (Phase 2), Magic DNS is admin-plane only (laptop → cluster); node↔node name resolution uses the VPC. Hostnames still resolve everywhere a NetBird client runs.
 
 ---
 
 ## 4. Phase-by-Phase Execution Guide
 
+### Phase 0: Local Rehearsal (recommended before renting)
+
+Run the full k3d drill from [`README.md`](README.md) §2–5 — placement, failover, GitOps
+sync — so Phases 1–9 on real hardware are a repeat of something already proven. Nothing
+in this phase touches the VPS.
+
 ### Phase 1: Provisioning & NetBird Mesh Setup
+
+> **What lives where after this phase:** NetBird is the **admin plane only** — laptop ⇄
+> cluster (kubectl, Argo UI, SSH). Node↔node cluster traffic follows the **network path
+> chosen in Phase 2** (Path A: GIO VPC, Path B: mesh). Keep that mental model; the
+> install commands below are written for both.
+
+0. **Rent the VPS instances (Biznet GIO console):**
+   * Create the three instances per §1 (Path A decision may add a 4th — see Phase 2),
+     Ubuntu 24.04 image, upload your SSH public key, record public IPs + private (VPC) IPs.
+   * **VPC verification checklist** (do this now — it decides Phase 2's path, and it's
+     cheap to check before renting the rest):
+     - [ ] VPC ("Virtual Network") available on NEO Lite SS/MS tiers? Price per attachment?
+     - [ ] Attach all nodes to one VPC/subnet; confirm inter-node `ping <peer-vpc-ip>` works
+     - [ ] Identify the interface inside Ubuntu: `ip a` — note the NIC name (`eth1`, `ens6`…)
+           and its MTU (`ip link show <if>`) → becomes `<VPC_IFACE>` / `<VPC_MTU>` below
+     - [ ] Are VPC IPs **static per instance** (survive rebuild/reboot)? If not → Path B.
+     - [ ] Routing: `ip route` — is the VPC subnet routed via the second NIC only?
+     - [ ] Security Groups: can inbound 6443/10250 be allowlisted to the VPC CIDR?
+   * Lock down early via console firewall/SG or `ufw` on each node:
+     ```bash
+     ufw default deny incoming
+     ufw allow 22/tcp   # tightened to mesh-only once NetBird works (step 4)
+     # 80/443 only on worker-2, once Traefik exists (Phase 3)
+     ufw enable
+     ```
 
 1. **Install NetBird Agent on All Nodes (Master, Worker 1, Worker 2):**
    ```bash
@@ -175,6 +214,23 @@ Managed via your external DNS provider (Cloudflare, Namecheap, Route53, etc.):
 
 ### Phase 2: K3s Cluster Bootstrap
 
+> **Decision — which network carries the cluster?** Both paths are supported; the
+> rent-time findings from the Phase 1 checklist choose it.
+>
+> | | **Path A — GIO VPC carries cluster traffic** (preferred if available) | **Path B — NetBird mesh carries cluster traffic** (fallback) |
+> | :--- | :--- | :--- |
+> | Node↔node: API, flannel, replication | VPC private IPs, provider-managed | `wt0` overlay IPs |
+> | Mesh role | admin plane only (laptop→cluster) | admin **and** data plane |
+> | NetBird down ⇒ | cluster unaffected (admin only) | agents crash-loop, nodes go NotReady |
+> | Latency/MTU | native VPC MTU (match flannel MTU if <1500) | tunnel-capped, +1 hop |
+> | 6443 exposure | VPC CIDR only (SG/ufw allowlist) | mesh CIDR only |
+> | Extra deps | none | systemd `Requires=netbird` ordering below |
+> | Staticity risk | VPC IP changes on rebuild ⇒ cert reissue | overlay IPs stable across rebuilds |
+>
+> Placeholders: `<MASTER_VPC_IP>`, `<VPC_IFACE>` (from Phase 1 checklist), `<MASTER_NETBIRD_IP>`.
+> K3s accepts multiple `--tls-san` flags — **both paths pin BOTH addresses** below, so
+> kubectl and break-glass access work over either plane no matter which carries traffic.
+
 > **Host prep (run on ALL nodes before installing K3s).** The 2 GB master is the tightest
 > box in the cluster; a swapfile is its OOM backstop, and `vm.max_map_count` is required
 > for the search/observability workloads:
@@ -192,9 +248,11 @@ Managed via your external DNS provider (Cloudflare, Namecheap, Route53, etc.):
 > Because swap is enabled, K3s must be told not to fail on it: every install command below
 > passes `--kubelet-arg=failSwapOn=false`.
 
-> **Prerequisite — systemd ordering (critical):** workers reach the API server over the
-> NetBird mesh. If NetBird is not up before K3s starts after a reboot, `k3s-agent`
-> crash-loops. Apply this override on **all nodes** before installing K3s:
+> **Prerequisite — systemd ordering (Path B only):** when the mesh carries cluster
+> traffic, workers dial the API over NetBird, and if NetBird isn't up before K3s starts
+> after a reboot, `k3s-agent` crash-loops. Apply this override on **all nodes** before
+> installing K3s. On Path A skip the `Requires=`/`After=` lines (keep `systemctl enable
+> netbird` for admin access):
 >
 > ```bash
 > sudo mkdir -p /etc/systemd/system/k3s.service.d /etc/systemd/system/k3s-agent.service.d
@@ -214,7 +272,18 @@ Managed via your external DNS provider (Cloudflare, Namecheap, Route53, etc.):
 > ```
 
 1. **Initialize Master Node (Control Plane):**
-   SSH into the Master node over NetBird and run:
+   SSH into the Master node (over the mesh — that works regardless of path) and run,
+   **Path A (VPC)**:
+   ```bash
+   curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="server \
+     --disable=traefik \
+     --tls-san=<MASTER_VPC_IP> \
+     --tls-san=<MASTER_NETBIRD_IP> \
+     --flannel-iface=<VPC_IFACE> \
+     --kubelet-arg=failSwapOn=false \
+     --node-name=master-node" sh -s -
+   ```
+   **Path B (mesh)**:
    ```bash
    curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="server \
      --disable=traefik \
@@ -223,8 +292,11 @@ Managed via your external DNS provider (Cloudflare, Namecheap, Route53, etc.):
      --kubelet-arg=failSwapOn=false \
      --node-name=master-node" sh -s -
    ```
-   > `--flannel-iface=wt0` pins the overlay to the NetBird interface; without it, flannel
-   > can bind to the public NIC on multi-interface nodes and break pod CIDR routing.
+   > `--flannel-iface` pins the pod overlay to the chosen private interface; without it,
+   > flannel can bind to the public NIC on multi-interface nodes and break pod CIDR routing.
+   > Pinning both `--tls-san`s keeps kubeconfig valid over either plane (and is the
+   > break-glass escape if the chosen plane misbehaves — flip `--flannel-iface`, traffic
+   > follows, certs already cover it).
 
 2. **Retrieve K3s Join Token:**
    ```bash
@@ -234,22 +306,27 @@ Managed via your external DNS provider (Cloudflare, Namecheap, Route53, etc.):
 3. **Join Worker Nodes:**
    Run on **Worker 1**:
    ```bash
-   curl -sfL https://get.k3s.io | K3S_URL="https://<MASTER_NETBIRD_IP>:6443" \
+   curl -sfL https://get.k3s.io | K3S_URL="https://<MASTER_API_IP>:6443" \
      K3S_TOKEN="<NODE_TOKEN_FROM_MASTER>" \
-     INSTALL_K3S_EXEC="agent --node-name=worker-1 --flannel-iface=wt0 --kubelet-arg=failSwapOn=false" sh -s -
+     INSTALL_K3S_EXEC="agent --node-name=worker-1 --flannel-iface=<CLUSTER_IFACE> --kubelet-arg=failSwapOn=false" sh -s -
    ```
-   Run on **Worker 2**:
-   ```bash
-   curl -sfL https://get.k3s.io | K3S_URL="https://<MASTER_NETBIRD_IP>:6443" \
-     K3S_TOKEN="<NODE_TOKEN_FROM_MASTER>" \
-     INSTALL_K3S_EXEC="agent --node-name=worker-2 --flannel-iface=wt0 --kubelet-arg=failSwapOn=false" sh -s -
-   ```
+   Run on **Worker 2**: same command with `--node-name=worker-2`.
+   Where (per chosen path): `Path A → <MASTER_API_IP>=<MASTER_VPC_IP>, <CLUSTER_IFACE>=<VPC_IFACE>` ·
+   `Path B → <MASTER_API_IP>=<MASTER_NETBIRD_IP>, <CLUSTER_IFACE>=wt0`.
 
-4. **Verify Cluster Health (and reboot-test the NetBird ordering):**
+4. **Verify Cluster Health (and reboot-test the chosen path):**
    ```bash
    kubectl get nodes -o wide
+   # Confirm INTERNAL-IP column shows VPC (Path A) or wt0 (Path B) addresses —
+   # a public IP there means flannel-iface didn't take.
    # Reboot one worker and confirm k3s-agent comes up cleanly:
    sudo reboot
+   ```
+   Path A additionally: lock the control-plane ports to the private plane once verified:
+   ```bash
+   # on all nodes — 6443/10250 reachable only from the VPC subnet (+ mesh CIDR for laptop kubectl)
+   ufw allow in on <VPC_IFACE> to any port 6443,10250 proto tcp
+   ufw deny 6443,10250/tcp
    ```
 
 5. **Label Nodes for Placement (used by GitOps overlays in later phases):**
@@ -753,12 +830,16 @@ on `external_secret_ready` and `bao_unsealed` so a sealed store is loud, not sil
 * **Git state:** `k8s-platform-manifests` is the cluster's DR story — mirror it (e.g.,
   private GitLab/github second remote). A full rebuild = Phases 1–9 + §5.6 bootstrap +
   restore dumps.
+* **NotReady triage (runbook):** mass `NotReady` right after a boot/reboot is almost
+  always node-transport, not Kubernetes: Path B → `netbird status` on the affected node
+  first; Path A → `ping <peer-vpc-ip>` and `ip link show <VPC_IFACE>` (MTU or
+  flannel-iface mismatch is the usual suspect).
 
 ---
 
 ## 7. Go/Go-Live Checklist
 
-- [ ] Cluster survives **reboot of every node** (NetBird ordering + flannel-iface verified)
+- [ ] Cluster survives **reboot of every node** (per-path checks: `INTERNAL-IP` shows the chosen private plane, `--flannel-iface` took; Path B: NetBird systemd ordering verified)
 - [ ] Argo CD: all pods on master, all components pinned, initial admin secret deleted
 - [ ] Patroni: kill primary node → replica promotes within TTL; **node-loss quorum test passed**
 - [ ] TLS: certificate issued + auto-renews (`kubectl get certificate -A`); HTTP→HTTPS redirect live
