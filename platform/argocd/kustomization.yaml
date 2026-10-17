@@ -1,0 +1,23 @@
+# Argo CD's own install, pinned + fitted for the 2 GB master.
+# Bootstrap manually once (Phase 6): kubectl apply -k platform/argocd/
+# Upstream is pinned to an exact release — never let a self-hosting GitOps tool
+# auto-update itself from a floating tag.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - https://raw.githubusercontent.com/argoproj/argo-cd/v2.13.2/manifests/install.yaml
+
+patches:
+  # Same JSON6902 body, applied to every Argo Deployment and StatefulSet via
+  # label selector — new components in future releases are covered automatically.
+  - path: pinning-patch.yaml
+    target:
+      kind: Deployment
+      labelSelector: app.kubernetes.io/part-of=argocd
+  - path: pinning-patch.yaml
+    target:
+      kind: StatefulSet
+      labelSelector: app.kubernetes.io/part-of=argocd
+  # Per-component requests/limits (multi-document strategic-merge patch).
+  - path: resources-patches.yaml

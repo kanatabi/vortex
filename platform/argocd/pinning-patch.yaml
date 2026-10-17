@@ -1,0 +1,8 @@
+# Pins EVERY Argo CD workload to the master node — not just the big three.
+# Referenced twice from kustomization.yaml (once for Deployments, once for the
+# application-controller StatefulSet), both via labelSelector
+# app.kubernetes.io/part-of=argocd, which all Argo workloads carry.
+- op: add
+  path: /spec/template/spec/nodeSelector
+  value:
+    node-pool: platform
