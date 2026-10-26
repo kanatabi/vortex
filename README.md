@@ -1,12 +1,17 @@
-# k8s-platform-manifests
+# vortex — GitOps manifests
+
+Part of the [`omicron`](https://github.com/kanatabi/omicron) superproject ·
+Frontend: [`earendil`](https://github.com/kanatabi/earendil) ·
+Backend contract: [`lumen`](https://github.com/kanatabi/lumen)
 
 GitOps source of truth for the `fzr-blog` K3s cluster. Everything running in the
 cluster (except Argo CD itself, which self-hosts from `platform/`) is defined here and
 synced by Argo CD via the **app-of-apps** pattern.
 
 Architecture rationale and the full provisioning guide live in
-[`../INFRA_ARCHITECTURE.md`](../INFRA_ARCHITECTURE.md). For running the whole stack
-locally with k3d, see [`../README.md`](../README.md).
+[`omicron/INFRA_ARCHITECTURE.md`](https://github.com/kanatabi/omicron/blob/main/INFRA_ARCHITECTURE.md).
+For running the whole stack locally with k3d, see
+[`omicron/README.md`](https://github.com/kanatabi/omicron/blob/main/README.md).
 
 ## Workflow
 
@@ -24,7 +29,7 @@ locally with k3d, see [`../README.md`](../README.md).
 ├── bootstrap/
 │   └── apps-hub.yaml          # root Application — the only file you apply manually
 ├── apps/                      # Application CRs ONLY (one per deployed app)
-│   ├── earendil-app.yaml # SvelteKit SSR site   (source repo: sv-fzr)
+│   ├── earendil-app.yaml # SvelteKit SSR site   (source repo: earendil)
 │   ├── lumen-app.yaml  # Go API               (source repo: fzr-blog-api — cluster-internal, no ingress)
 │   ├── lumen-db-app.yaml       # Patroni PostgreSQL   (selfHeal: false — DB guard)
 │   ├── observability-app.yaml # Loki/VictoriaMetrics/Alloy/Grafana (Phase 5)
