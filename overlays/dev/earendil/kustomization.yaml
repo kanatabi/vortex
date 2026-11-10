@@ -1,0 +1,24 @@
+# Dev view of earendil: same base manifests, env from OpenBao via ESO instead of
+# the inline literals (production's exact patch shape — this overlay is the local
+# rehearsal of the §5.3 render chain). Opt-in by path; bases stay ESO-free.
+# Requires the same local-cluster prereqs as overlays/dev/lumen (store `bao`,
+# external-secrets, values seeded at kv/data/earendil/dev — key: API_BASE).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../../applications/earendil
+  - externalsecret.yaml
+
+patches:
+  # Swap the inline env block for the ESO-generated ConfigMap.
+  - target:
+      kind: Deployment
+      name: earendil-web-server
+    patch: |-
+      - op: remove
+        path: /spec/template/spec/containers/0/env
+      - op: add
+        path: /spec/template/spec/containers/0/envFrom
+        value:
+          - configMapRef: { name: app-config }

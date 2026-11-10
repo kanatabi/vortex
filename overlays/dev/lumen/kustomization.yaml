@@ -1,0 +1,14 @@
+# Dev view of lumen — the ESO path for the LOCAL cluster (k3d rehearsal), committed
+# so the shape is reviewable like any other env. The invariant holds: BASES stay
+# ESO-free, so plain k3d works without Bao; repointing an Application's source.path
+# here (or `kubectl apply -k overlays/dev/lumen`) opts a cluster IN. Requires, on
+# that cluster: openbao + secrets-plane (store `bao`) + external-secrets installed
+# (apps/external-secrets-app.yaml carries the first-sync checklist) and values
+# seeded at kv/data/lumen/dev under EXACTLY the key names below (the CR is the
+# contract; portal matrix /secrets/summary shows the holes as ○n).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../../applications/lumen
+  - externalsecret.yaml
