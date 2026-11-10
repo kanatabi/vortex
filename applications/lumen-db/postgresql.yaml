@@ -18,6 +18,9 @@ spec:
       - key: node-pool
         operator: In
         values: ['data', 'edge']
+  postgresql:                  # required block as of operator v2 (the apiserver
+    parameters:                # rejected its absence on first-ever apply, live walk
+      log_statement: all       # 2026-11-10 — mirrors team_api_role_configuration)
   patroni:
     initdb:
       encoding: 'UTF8'
