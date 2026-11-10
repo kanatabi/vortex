@@ -1,0 +1,6 @@
+# The chart templates into .Release.Namespace; Argo applies this Namespace first
+# (no more manual bootstrap for it). Replaces the exception in the old apps/ CR header.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: external-secrets

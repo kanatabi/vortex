@@ -1,0 +1,33 @@
+# ESO — the Helm chart via kustomize's helmCharts (the repo-server pulls with the
+# HELM BINARY over OCI, which works anonymously against ghcr's 2026 token policy;
+# Argo's own OCI paths do NOT: v2.13.2 built `helm pull --repo oci://...` (invalid
+# args) and v3.6's Go resolver gets 403 DENIED on anonymous ghcr tokens — both
+# PROVEN on the 2026-11-10 first live rehearsal).
+# Consequences, all good: chart stays EXACT-pinned; the namespace is now a tracked
+# resource (the old manual `kubectl create ns external-secrets` bootstrap exception
+# DIES); placement lives in valuesInline here (prod shape) and is collapsed by
+# components/single-node in overlays/local — one doctrine for every workload.
+# Validation note: `kubectl kustomize --enable-helm` (helm on PATH) builds this dir.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: external-secrets
+
+helmCharts:
+  - name: external-secrets
+    repo: oci://ghcr.io/external-secrets/charts
+    version: 2.15.0
+    releaseName: external-secrets
+    includeCRDs: true   # the ExternalSecret/ClusterSecretStore CRDs are the whole
+    #                   point — secrets-plane (wave 1) depends on them.
+    valuesInline:
+      nodeSelector:
+        node-pool: data
+      webhook:
+        nodeSelector:
+          node-pool: data
+      image:
+        pullPolicy: IfNotPresent
+
+resources:
+  - namespace.yaml

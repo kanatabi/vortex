@@ -1,0 +1,11 @@
+# 1-node view of ESO: the base chart wrapper + placement collapse (the component's
+# Deployment patch strips the nodeSelectors coming from valuesInline — same trick,
+# one doctrine, chart apps included).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../../applications/external-secrets
+
+components:
+  - ../../../components/single-node
