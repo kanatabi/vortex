@@ -36,6 +36,7 @@ spec:
                   - key: node-pool
                     operator: NotIn
                     values: ['platform']
+      enableServiceLinks: false   # no legacy docker-style service env injection into app pods
       containers:
         - name: migrate
           image: lumen

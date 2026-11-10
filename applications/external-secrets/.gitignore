@@ -1,0 +1,4 @@
+# kustomize --enable-helm pulls the chart source here at build time.
+# It is a BUILD ARTIFACT (the pin lives in kustomization.yaml: version 2.15.0)
+# — never vendored, never reviewed, never committed.
+charts/

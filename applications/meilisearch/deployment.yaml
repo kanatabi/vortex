@@ -17,6 +17,7 @@ spec:
         prometheus.io/path: "/metrics"   # Meilisearch exposes Prometheus-format metrics
     spec:
       nodeSelector: { node-pool: edge }
+      enableServiceLinks: false   # no legacy docker-style service env injection into app pods
       containers:
         - name: meilisearch
           image: getmeili/meilisearch:v1.10.0

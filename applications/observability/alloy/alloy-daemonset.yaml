@@ -20,6 +20,7 @@ spec:
                   - key: node-pool
                     operator: In
                     values: [data, edge]
+      enableServiceLinks: false   # no legacy docker-style service env injection into app pods
       containers:
         - name: alloy
           image: grafana/alloy:v1.4.0

@@ -24,6 +24,7 @@ spec:
       labels: { app: victoria-metrics }
     spec:
       nodeSelector: { node-pool: data }
+      enableServiceLinks: false   # no legacy docker-style service env injection into app pods
       containers:
         - name: victoria-metrics
           image: victoriametrics/victoria-metrics:v1.106.1

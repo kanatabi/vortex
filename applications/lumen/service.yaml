@@ -1,7 +1,10 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: lumen
+  name: lumen-http-server   # matches consumer DNS (lumen-http-server.lumen.svc) AND kills the
+                    # legacy service-link LUMEN_PORT collision (Service named 'lumen' made kubelet
+                    # inject LUMEN_PORT=tcp://..., which viper read as the listen port — live
+                    # walk crash 2026-11-10: 'listen tcp: address :tcp://... too many colons')
   namespace: lumen
   # CLUSTER-INTERNAL ONLY by design: the SvelteKit SSR pods call this via service DNS,
   # and the browser's one client-side call (search suggest) is proxied same-origin

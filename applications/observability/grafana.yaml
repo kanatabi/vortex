@@ -43,6 +43,7 @@ spec:
       labels: { app: grafana }
     spec:
       nodeSelector: { node-pool: edge }
+      enableServiceLinks: false   # no legacy docker-style service env injection into app pods
       containers:
         - name: grafana
           image: grafana/grafana:11.2.0

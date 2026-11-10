@@ -54,6 +54,7 @@ spec:
       labels: { app: loki }
     spec:
       nodeSelector: { node-pool: data }
+      enableServiceLinks: false   # no legacy docker-style service env injection into app pods
       containers:
         - name: loki
           image: grafana/loki:3.1.0

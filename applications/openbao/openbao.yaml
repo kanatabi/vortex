@@ -54,6 +54,7 @@ spec:
       labels: { app: openbao }
     spec:
       nodeSelector: { node-pool: edge }
+      enableServiceLinks: false   # no legacy docker-style service env injection into app pods
       containers:
         - name: openbao
           image: openbao/openbao:2.1.1

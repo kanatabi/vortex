@@ -33,6 +33,8 @@ spec:
                 matchLabels:
                   app: earendil-web-server
               topologyKey: kubernetes.io/hostname
+      enableServiceLinks: false   # walk lesson 2026-11-10: kubelet service-links
+      #                   injected LUMEN_PORT=tcp://..., viper read it as the port
       containers:
         - name: earendil-web-server
           image: earendil
