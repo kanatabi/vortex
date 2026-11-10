@@ -1,9 +1,16 @@
 # earendil — the blog FRONTEND. SvelteKit 3 SSR app (adapter-node, source repo:
-# sv-fzr) serving https://ainurrofiq.com. Also hosts the same-origin /api proxy
-# that carries the browser's only client-side call to the cluster-internal backend
-# (lumen). No VITE_* build-time env — runtime API_BASE/PUBLIC_API_BASE only (ORIGIN: no consumer, dropped 2026-11-10),
-# so one image runs in every environment (see overlays/).
+# earendil) serving https://gofar.id (ainurrofiq.com 301s in). Also hosts the
+# same-origin /api proxy that carries the browser's only client-side call to the
+# cluster-internal backend (lumen). No VITE_* build-time env — runtime
+# API_BASE/PUBLIC_API_BASE only (ORIGIN: no consumer, dropped 2026-11-10), so
+# one image runs in every environment (see overlays/).
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 namespace: earendil
+
+resources:
+  - namespace.yaml
+  - deployment.yaml
+  - service.yaml
+  - ingress.yaml

@@ -1,10 +1,17 @@
-# lumen — the blog BACKEND API (source repo: fzr-backend; one codebase, two
-# processes). http-server pods serve the API that earendil calls via internal
-# DNS (NO public ingress — access matrix §2); worker pods run background jobs
-# independently (1 replica, own scheduling, never behind the Service). Reads
-# lumen-secrets (ESO-rendered from OpenBao in prod overlays); /metrics on the
-# unrouted admin :9090 per the Alloy scrape contract.
+# lumen — the blog BACKEND API (source repo: lumen; one binary, roles
+# server|worker|all). http-server pods serve the API that earendil + mellon
+# reach via internal DNS (NO public ingress — access matrix §2); worker pods run
+# background jobs independently (1 replica, own scheduling, never behind the
+# Service). Reads lumen-secrets (ESO-rendered from OpenBao in env overlays) +
+# lumen-bao-credentials (§5.6 bootstrap family); /metrics on the unrouted admin
+# :9090 per the Alloy scrape contract.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 namespace: lumen
+
+resources:
+  - namespace.yaml
+  - http-server-deployment.yaml
+  - worker-deployment.yaml
+  - service.yaml
