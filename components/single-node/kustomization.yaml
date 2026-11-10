@@ -34,6 +34,18 @@ patches:
           spec:
             nodeSelector: null
             affinity: null
+  - target:
+      kind: Job
+    patch: |-
+      apiVersion: batch/v1
+      kind: Job
+      metadata:
+        name: unused
+      spec:
+        template:
+          spec:
+            nodeSelector: null
+            affinity: null
   # Some v1beta1 pods (StatefulSet-era shapes) still carry the old field;
   # removing it is idempotent — a warning when absent is expected, not a fail.
   - target:
