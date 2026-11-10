@@ -67,12 +67,14 @@ spec:
             - secretRef:
                 name: lumen-bao-credentials
                 optional: true
+          # /healthz — the route that actually exists (the scaffold's /ping was
+          # fiction: 404 forever, pod never Ready, discovered on the live walk).
           readinessProbe:
-            httpGet: { path: /ping, port: http }
+            httpGet: { path: /healthz, port: http }
             initialDelaySeconds: 30
             periodSeconds: 60
           livenessProbe:
-            httpGet: { path: /ping, port: http }
+            httpGet: { path: /healthz, port: http }
             initialDelaySeconds: 30
             periodSeconds: 60
           resources:

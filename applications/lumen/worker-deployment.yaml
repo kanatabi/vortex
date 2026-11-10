@@ -1,7 +1,7 @@
 # lumen runs ONE codebase as two processes: http-server serves the API that earendil
 # calls (internal DNS only); this deployment runs the same image as background WORKERS
 # (jobs/queues). Independent by design: 1 replica, own scheduling, never behind the
-# Service. Shares the image + lumen-secrets; runs its own /ping + admin :9090.
+# Service. Shares the image + lumen-secrets; NO HTTP listener — probes were
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -61,15 +61,9 @@ spec:
             # relay creds land here too (worker role keeps the same env contract)
             - secretRef:
                 name: lumen-bao-credentials
-                optional: true
-          readinessProbe:
-            httpGet: { path: /ping, port: http }
-            initialDelaySeconds: 30
-            periodSeconds: 60
-          livenessProbe:
-            httpGet: { path: /ping, port: http }
-            initialDelaySeconds: 30
-            periodSeconds: 60
+          # NO http probes: the worker role runs NO HTTP server (Short says
+          # so) — port 8080 is a declaration of intent, not a listener. Death is
+          # structural: queue start failure exits the process, kubelet restarts.
           resources:
             requests: { cpu: 100m, memory: 128Mi }
             limits: { cpu: 300m, memory: 256Mi }
