@@ -110,10 +110,12 @@ default).
 kubectl apply -k platform/argocd/
 # 2. one-time namespace for the ESO chart app (charts don't self-create it)
 kubectl create namespace external-secrets
-# 3. App-of-apps hub — after replacing `cavadevop` in bootstrap/ and apps/
+# 3. App-of-apps hub — repoURLs are real (kanatabi/vortex), apply directly
 kubectl apply -f bootstrap/apps-hub.yaml
 ```
 
-Placeholders to replace before going live: `cavadevop` (all `repoURL`s),
-`ainurrofiq.com` + `staging.ainurrofiq.com` (ingress hosts + frontend `ORIGIN`/`API_BASE`/`PUBLIC_API_BASE` env),
-and the `REPLACE_AT_BOOTSTRAP` roleId in `applications/secrets-plane/`.
+Placeholders to replace before going live: `ainurrofiq.com` + `staging.ainurrofiq.com`
+(ingress hosts — decide the gofar.id cutover alongside the owner; `ORIGIN` env is gone:
+earendil reads no canonical-origin variable), and the `REPLACE_AT_BOOTSTRAP` roleId in
+`applications/secrets-plane/`. (`repoURL`s were realigned to `kanatabi/vortex` 2026-11-10
+when the manifests repo moved org+name — they are no longer a placeholder.)

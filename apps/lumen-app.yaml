@@ -6,7 +6,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: 'https://github.com/cavadevop/k8s-platform-manifests.git'
+    repoURL: 'https://github.com/kanatabi/vortex.git'
     targetRevision: HEAD
     path: applications/lumen           # prod base; repoint at overlays/production/lumen per §5.3
   destination:
