@@ -56,6 +56,10 @@ spec:
             - secretRef:
                 name: lumen-secrets
                 optional: true
+            # relay creds land here too (worker role keeps the same env contract)
+            - secretRef:
+                name: lumen-bao-credentials
+                optional: true
           readinessProbe:
             httpGet: { path: /ping, port: http }
             initialDelaySeconds: 30
