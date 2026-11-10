@@ -1,0 +1,51 @@
+# Component: collapse the 3-node placement shape onto ONE node. This is not a
+# dev hack — single-VPS IS the near-term production shape (owner decision
+# 2026-11-10); when nodes are added, dropping this component from the chain
+# restores the full placement contract, which is exactly why placement lives in
+# base manifests and NOT in per-cluster patches (selfHeal would fight those).
+# What it relaxes: nodeSelector + node/pod affinity everywhere, replica counts
+# (anti-affinity pairs of 2 die with one host), Zalando numberOfInstances.
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+
+patches:
+  - target:
+      kind: Deployment
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: unused
+      spec:
+        replicas: 1
+        template:
+          spec:
+            nodeSelector: null
+            affinity: null
+  - target:
+      kind: DaemonSet
+    patch: |-
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: unused
+      spec:
+        template:
+          spec:
+            nodeSelector: null
+            affinity: null
+  # Some v1beta1 pods (StatefulSet-era shapes) still carry the old field;
+  # removing it is idempotent — a warning when absent is expected, not a fail.
+  - target:
+      kind: StatefulSet
+    path: statefulset-patch.yaml
+  - target:
+      kind: postgresql
+    patch: |-
+      apiVersion: acid.zalan.do/v1
+      kind: postgresql
+      metadata:
+        name: unused
+      spec:
+        numberOfInstances: 1
+        node_affinity: null
