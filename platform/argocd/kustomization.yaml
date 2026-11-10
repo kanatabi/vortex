@@ -1,4 +1,8 @@
 # Argo CD's own install, pinned + fitted for the 2 GB master.
+# Pin raised v2.13.2 -> v3.6.1 (2026-11-10, FIRST LIVE REHEARSAL evidence):
+# 2.13.2 cannot render the OCI Helm chart app (builds `helm pull --repo oci://...`
+# -> helm "object required"), and ESO publishes 2.x charts OCI-only. Deliberate
+# bump, overlay stays version-agnostic (labelSelector pinning + per-name resources).
 # Bootstrap manually once (Phase 6): kubectl apply -k platform/argocd/
 # Upstream is pinned to an exact release — never let a self-hosting GitOps tool
 # auto-update itself from a floating tag.
@@ -14,7 +18,7 @@ resources:
   # NOT define the Namespace object itself — without this, `kubectl apply -k` fails
   # with `namespaces "argocd" not found`.
   - namespace.yaml
-  - https://raw.githubusercontent.com/argoproj/argo-cd/v2.13.2/manifests/install.yaml
+  - https://raw.githubusercontent.com/argoproj/argo-cd/v3.6.1/manifests/install.yaml
 
 patches:
   # Same JSON6902 body, applied to every Argo Deployment and StatefulSet via
