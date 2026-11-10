@@ -21,6 +21,22 @@ resources:
   - https://raw.githubusercontent.com/argoproj/argo-cd/v3.6.1/manifests/install.yaml
 
 patches:
+  # kustomize helmCharts support: the repo-server needs --enable-helm or
+  # applications/external-secrets renders nothing (walk-proven 2026-11-10).
+  # Inline body: builtin kustomize's target+path entry combo fails to parse here;
+  # the bare-file-with-own-target trick is invalid in a patches: path: entry too
+  # (workspace lore) — inline is unambiguous.
+  - target:
+      kind: ConfigMap
+      name: argocd-cm
+    patch: |-
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: argocd-cm
+      data:
+        kustomize.buildOptions: --enable-helm
+
   # Same JSON6902 body, applied to every Argo Deployment and StatefulSet via
   # label selector — new components in future releases are covered automatically.
   - path: pinning-patch.yaml
