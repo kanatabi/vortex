@@ -64,10 +64,13 @@ spec:
           volumeMounts:
             - { name: config, mountPath: /config }
             - { name: data, mountPath: /data }
-          # `bao status` answers even while sealed — liveness must NOT treat sealed as dead,
-          # but readiness-ish is manual at blog scale (single replica, always-up target).
+          # Liveness must NOT depend on seal state: `bao status` exits 2 while
+          # SEALED, kubelet SIGTERMs, bao logs "shutdown triggered" and exits 0 —
+          # a sealed-forever CrashLoop (PROVEN live 2026-11-10; it also destroys
+          # the §5.6 unseal drill, which needs the pod alive while sealed to exec
+          # the unseal into it). The listener being up IS the process being alive.
           livenessProbe:
-            exec: { command: ["bao", "status"] }
+            tcpSocket: { port: http }
             initialDelaySeconds: 10
             periodSeconds: 30
           resources:
