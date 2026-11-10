@@ -1,0 +1,27 @@
+# App-of-apps hub, SINGLE-NODE variant (local minikube rehearsal AND the 1-VPS
+# production shape). Manual bootstrap exception like apps-hub.yaml itself.
+# Non-recursive sync of apps/single-node/ — the production hub (path apps/)
+# never sees these CRs, and vice versa: exactly one hub may own a cluster.
+#   local rehearsal:  kubectl --context minikube apply -f bootstrap/apps-hub-single-node.yaml
+#   scale-out later:  delete this hub app, apply bootstrap/apps-hub.yaml, relabel
+#                     node-pools — placement returns via the bases untouched.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: platform-apps-hub
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/kanatabi/vortex.git'
+    targetRevision: HEAD
+    path: apps/single-node/
+    directory:
+      recurse: false
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

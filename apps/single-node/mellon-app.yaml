@@ -1,0 +1,21 @@
+# wave 2: admin portal (console.gofar.id; self-signed locally by the component).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: mellon
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/kanatabi/vortex.git'
+    targetRevision: HEAD
+    path: overlays/local/mellon
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: mellon
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
