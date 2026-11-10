@@ -48,6 +48,15 @@ spec:
               value: "3000"
             - name: API_BASE
               value: "http://lumen-http-server.lumen.svc.cluster.local"
+            # adapter-node origin reconstruction (opt-in env knobs): without these
+            # the adapter ASSUMES https and its request.url diverges from the wire —
+            # which breaks SvelteKit's CSRF origin match on plain-http local runs and
+            # would fake-https the cookie `secure` derivation (fix/session-cookie-secure).
+            # Traefik rewrites both headers per request; clients cannot forge them.
+            - name: PROTOCOL_HEADER
+              value: "x-forwarded-proto"
+            - name: HOST_HEADER
+              value: "x-forwarded-host"
           # unauthenticated / is a 307 to /login — kubelet counts 2xx-3xx healthy.
           readinessProbe:
             httpGet: { path: /, port: http }
