@@ -1,0 +1,13 @@
+# mellon — admin portal base. Runtime env only (PORT + API_BASE); env overlays
+# swap the inline block for the ESO-rendered app-config ConfigMap (earendil's
+# exact pattern). Bao paths: kv/mellon/{env}.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: mellon
+
+resources:
+  - namespace.yaml
+  - deployment.yaml
+  - service.yaml
+  - ingress.yaml

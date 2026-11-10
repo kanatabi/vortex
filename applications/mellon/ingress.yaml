@@ -1,0 +1,29 @@
+# console.gofar.id — the SECOND sanctioned public surface (INFRA §2 amendment
+# 2026-11-08). Go-live ordering is a hard rule: DNS resolves BEFORE first
+# issuance, TLS is real (cert-manager below), and GATE #10 (mellon/THREAT-NOTE
+# final read + console checklist) clears BEFORE the first login attempt from
+# the world. lumen and Bao stay private; the portal is their only doorway.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: mellon-web-server
+  namespace: mellon
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: console.gofar.id
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: mellon-web-server
+                port:
+                  name: http
+  tls:
+    - secretName: mellon-web-server-tls
+      hosts:
+        - console.gofar.id
