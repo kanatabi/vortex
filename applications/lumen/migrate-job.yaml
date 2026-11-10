@@ -1,0 +1,51 @@
+# Schema migration is its OWN lifecycle step (owner ruling 2026-11-10 after the
+# live walk proved nothing in the deployed path created river's queue tables):
+# an Argo PreSync hook Job runs `lumen migrate` BEFORE any workload syncs and
+# MUST succeed — a failed migration blocks the rollout (old pods keep serving)
+# instead of crash-looping the fleet. Runs every sync; idempotent, ~2s when
+# current. Admin bootstrap (lumen user) stays a separate MANUAL step — its
+# password never lives in Git.
+# Plain `kubectl apply` note: the hook annotations are inert strings there;
+# the Job just runs once per apply (Job specs are immutable — k3d paths carry
+# no DB to migrate anyway). Transient workload: no §1 steady-state budget.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: lumen-migrate
+  namespace: lumen
+  labels:
+    app: lumen-migrate
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
+spec:
+  backoffLimit: 3
+  activeDeadlineSeconds: 300
+  ttlSecondsAfterFinished: 600
+  template:
+    metadata:
+      labels:
+        app: lumen-migrate
+    spec:
+      restartPolicy: Never
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-pool
+                    operator: NotIn
+                    values: ['platform']
+      containers:
+        - name: migrate
+          image: lumen
+          imagePullPolicy: IfNotPresent
+          args: ["migrate"]
+          envFrom:
+            # optional:true: a missing Secret yields lumen's own loud config
+            # error (clean Job failure, blocked sync) instead of an opaque
+            # CreateContainerConfigError the hook would wait on till deadline.
+            - secretRef: { name: lumen-secrets, optional: true }
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 500m, memory: 256Mi }
