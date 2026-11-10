@@ -27,28 +27,41 @@ For running the whole stack locally with k3d, see
 ```text
 .
 ├── bootstrap/
-│   └── apps-hub.yaml          # root Application — the only file you apply manually
+│   ├── apps-hub.yaml          # root Application (3-node shape) — apply manually
+│   └── apps-hub-single-node.yaml # the 1-node variant (local rehearsal + 1-VPS prod)
 ├── apps/                      # Application CRs ONLY (one per deployed app)
 │   ├── earendil-app.yaml # SvelteKit SSR site   (source repo: earendil)
-│   ├── lumen-app.yaml  # Go API               (source repo: fzr-blog-api — cluster-internal, no ingress)
+│   ├── lumen-app.yaml  # Go API               (source repo: lumen — cluster-internal, no ingress)
 │   ├── lumen-db-app.yaml       # Patroni PostgreSQL   (selfHeal: false — DB guard)
 │   ├── observability-app.yaml # Loki/VictoriaMetrics/Alloy/Grafana (Phase 5)
 │   ├── meilisearch-app.yaml   # search backend       (cluster-internal)
 │   ├── openbao-app.yaml       # the values store itself (§5)
+│   ├── mellon-app.yaml   # admin portal           (console.gofar.id — surface #2)
 │   ├── external-secrets-app.yaml # ESO, as an OCI Helm chart — the one non-git Application
 │   └── secrets-plane-app.yaml # ClusterSecretStore `bao` (wave 1: after ESO+OpenBao)
+├── apps/single-node/          # twin CR set for 1-node clusters (hub-single syncs this;
+│                              # the prod hub syncs apps/ NON-recursively and never sees them)
 ├── applications/              # raw manifests, one kustomize dir per app
 │   ├── earendil/
+│   ├── mellon/
 │   ├── lumen/
 │   ├── lumen-db/
 │   ├── observability/
 │   ├── meilisearch/
 │   ├── openbao/
 │   └── secrets-plane/
+├── components/                # placement/cluster-SHAPE toggles, orthogonal to env overlays
+│   ├── single-node/           # collapses pools, replica pairs, Patroni instances to 1 node
+│   └── selfsigned/            # strips ACME TLS for clusters without cert-manager
 ├── overlays/
-│   └── production/            # same bases + values sourced from OpenBao via ESO (§5.3)
-│       ├── earendil/     # JSON6902 patch: inline env -> ESO-rendered app-config
-│       └── lumen/      # ExternalSecret materializes lumen-secrets
+│   ├── dev/                   # ESO feeds reading kv/{app}/dev        (local cluster)
+│   ├── staging/               # kv/{app}/staging
+│   ├── production/            # same bases + values sourced from OpenBao via ESO (§5.3)
+│   │   ├── earendil/          # JSON6902 patch: inline env -> ESO-rendered app-config
+│   │   ├── lumen/             # ExternalSecret materializes lumen-secrets
+│   │   └── mellon/            # portal config feed (kv/mellon/production)
+│   └── local/                 # CHAINS: dev env axis + single-node + selfsigned —
+│                              # the minikube/1-VPS rehearsal views, still real GitOps
 └── platform/
     └── argocd/                # Argo CD's own install: pinned upstream + overlays
         ├── namespace.yaml     # upstream install.yaml omits it — the overlay owns it now
@@ -111,8 +124,21 @@ kubectl apply -k platform/argocd/
 # 2. one-time namespace for the ESO chart app (charts don't self-create it)
 kubectl create namespace external-secrets
 # 3. App-of-apps hub — repoURLs are real (kanatabi/vortex), apply directly
+#    (single node? apply bootstrap/apps-hub-single-node.yaml INSTEAD — never both)
 kubectl apply -f bootstrap/apps-hub.yaml
 ```
+
+## Single-node clusters (local minikube / one VPS)
+
+The blueprint targets 3 nodes (`node-pool` selectors, 2-replica anti-affinity pairs,
+2-instance Patroni). One node satisfies none of that — so the collapse lives in
+`components/`, and `overlays/local/*` chains the dev env axis through it.
+`bootstrap/apps-hub-single-node.yaml` + `apps/single-node/` give the whole estate a
+1-node home. Sync waves make the runbook's hard ordering STRUCTURAL: OpenBao (wave 0)
+comes up unsealed-but-empty, the `bao` store (wave 1) stays NOT-Ready until the manual
+init/AppRole/seed lands, and the apps (wave 2) simply cannot render env before that —
+no "pods booted with defaults" failure mode. See the root workspace `RUNBOOK.md` for
+the full step-by-step (local rehearsal AND VPS deltas).
 
 Placeholders to replace before going live: `ainurrofiq.com` + `staging.ainurrofiq.com`
 (ingress hosts — decide the gofar.id cutover alongside the owner; `ORIGIN` env is gone:

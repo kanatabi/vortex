@@ -1,0 +1,21 @@
+# wave 2: blog SSR (app-config ConfigMap via the store).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: earendil
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/kanatabi/vortex.git'
+    targetRevision: HEAD
+    path: overlays/local/earendil
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: earendil
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

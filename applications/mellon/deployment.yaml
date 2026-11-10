@@ -1,0 +1,60 @@
+# mellon — the admin PORTAL (SvelteKit 3, adapter-node; source repo kanatabi/mellon).
+# UI-only by doctrine (mellon DESIGN §2): it relays to lumen over the cluster-internal
+# service via its OWN same-origin proxy, holds no credentials of its own. One instance
+# (INFRA §1 budget: worker-2 "Mellon 1 instance"); the single-node component collapses
+# the fleet shapes anyway.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mellon-web-server
+  namespace: mellon
+  labels:
+    app: mellon-web-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mellon-web-server
+  template:
+    metadata:
+      labels:
+        app: mellon-web-server
+    spec:
+      # NOTE: if GHCR packages are private, create an imagePullSecret in this namespace
+      # and add: imagePullSecrets: [{name: ghcr-pull}]
+      affinity:
+        # keep the portal off the 2 GB master (same rule as earendil)
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-pool
+                    operator: NotIn
+                    values: ['platform']
+      containers:
+        - name: mellon-web-server
+          image: mellon
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3000
+          env:
+            # adapter-node listen port; API_BASE = cluster-internal lumen (the ONLY
+            # backend route the portal knows — it never talks to Bao directly; the
+            # relay chain is mellon -> lumen /admin/bao -> Bao, same-origin proxy)
+            - name: PORT
+              value: "3000"
+            - name: API_BASE
+              value: "http://lumen-http-server.lumen.svc.cluster.local"
+          # unauthenticated / is a 307 to /login — kubelet counts 2xx-3xx healthy.
+          readinessProbe:
+            httpGet: { path: /, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          livenessProbe:
+            httpGet: { path: /, port: http }
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          resources:
+            requests: { cpu: 100m, memory: 192Mi }
+            limits: { cpu: 300m, memory: 384Mi }

@@ -58,6 +58,13 @@ spec:
             - secretRef:
                 name: lumen-secrets
                 optional: true
+            # §5.6 bootstrap family: the portal relay's Bao AppRole creds
+            # (LUMEN_BAO_ADDR/ROLE_ID/SECRET_ID). Deliberately NOT an ExternalSecret
+            # (bootstrap paradox) and deliberately optional:true — k3d/local without
+            # a relay just runs with Bao paths dark, exactly as before.
+            - secretRef:
+                name: lumen-bao-credentials
+                optional: true
           readinessProbe:
             httpGet: { path: /ping, port: http }
             initialDelaySeconds: 30

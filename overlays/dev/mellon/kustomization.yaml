@@ -1,0 +1,20 @@
+# Dev view of mellon (local cluster). Base stays inline-env (k3d/minikube-friendly);
+# this overlay opts IN to the ESO render chain at kv/mellon/dev.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../../applications/mellon
+  - externalsecret.yaml
+
+patches:
+  - target:
+      kind: Deployment
+      name: mellon-web-server
+    patch: |-
+      - op: remove
+        path: /spec/template/spec/containers/0/env
+      - op: add
+        path: /spec/template/spec/containers/0/envFrom
+        value:
+          - configMapRef: { name: app-config }

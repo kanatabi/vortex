@@ -1,0 +1,12 @@
+# Local-cluster view of earendil: dev Bao paths (overlays/dev/earendil) + single-node
+# placement + self-signed TLS. The chain shows the axis separation: env lives
+# in overlays/{dev,staging,production}, cluster SHAPE in components/.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../dev/earendil
+
+components:
+  - ../../../components/single-node
+  - ../../../components/selfsigned

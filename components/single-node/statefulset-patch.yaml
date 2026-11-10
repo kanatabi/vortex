@@ -1,0 +1,11 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: unused
+spec:
+  replicas: 1
+  template:
+    spec:
+      nodeSelector: null
+      affinity: null
+
