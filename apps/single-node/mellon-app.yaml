@@ -12,6 +12,18 @@ spec:
     repoURL: 'https://github.com/kanatabi/vortex.git'
     targetRevision: HEAD
     path: overlays/local/mellon
+  # ESO's webhook DEFAULTS these spec fields server-side (creationPolicy,
+  # deletionPolicy, template engineVersion/mergePolicy) — they never exist in
+  # Git, so without this the app is PERPETUALLY OutOfSync and selfHeal would
+  # thrash the ES forever. Discovered on the live walk 2026-11-10.
+  ignoreDifferences:
+    - group: external-secrets.io
+      kind: ExternalSecret
+      jqPathExpressions:
+        - .spec.target.creationPolicy
+        - .spec.target.deletionPolicy
+        - .spec.target.template.engineVersion
+        - .spec.target.template.mergePolicy
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: mellon
