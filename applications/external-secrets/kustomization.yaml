@@ -29,13 +29,17 @@ helmCharts:
       image:
         pullPolicy: IfNotPresent
       # Generic targets (spec.target.manifest — how 2.x emits ConfigMaps) are
-      # OFF by default in ESO 2.x ("unsafe" = the controller may create resource
-      # kinds beyond Secrets). Our threat model holds: ExternalSecret specs are
-      # writable ONLY via GitOps PRs, the cluster is single-tenant, and the
-      # generic output here is a non-secret ConfigMap. Accepted deliberately —
-      # revisit before this cluster ever hosts a second tenant.
-      extraArgs:
-        unsafe-allow-generic-targets: true
+      # OFF by default in ESO 2.x. THE FIRST-CLASS KNOB: genericTargets.enabled
+      # renders BOTH the controller flag (--unsafe-allow-generic-targets) AND
+      # the ConfigMap create/update RBAC (rbac.yaml line ~160) — an extraArgs
+      #-only shortcut opens the feature but leaves the controller forbidden to
+      # write configmaps (walk-learned: "configmaps is forbidden: User system:
+      # serviceaccount:external-secrets:external-secrets"). Threat model holds:
+      # ES specs are writable ONLY via GitOps PRs; single-tenant cluster; the
+      # generic output here is a non-secret ConfigMap. Revisit before a second
+      # tenant ever shares this cluster.
+      genericTargets:
+        enabled: true
 
 resources:
   - namespace.yaml
