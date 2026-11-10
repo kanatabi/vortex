@@ -22,10 +22,10 @@ spec:
     initdb:
       encoding: 'UTF8'
       data-checksums: 'true'
-    ttl: '30'
-    loop_wait: '10'
-    retry_timeout: '10'
-    synchronous_mode: 'false'
+    ttl: 30             # typed as of operator v2: ints/bools, NOT quoted strings
+    loop_wait: 10       # (the quoted v1-era shapes were REJECTED by the apiserver
+    retry_timeout: 10   #  on the first-ever deploy — live walk 2026-11-10)
+    synchronous_mode: false
   resources:
     requests: { cpu: '250m', memory: '512Mi' }
     limits: { cpu: '1000m', memory: '1Gi' }
