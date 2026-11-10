@@ -28,6 +28,14 @@ helmCharts:
           node-pool: data
       image:
         pullPolicy: IfNotPresent
+      # Generic targets (spec.target.manifest — how 2.x emits ConfigMaps) are
+      # OFF by default in ESO 2.x ("unsafe" = the controller may create resource
+      # kinds beyond Secrets). Our threat model holds: ExternalSecret specs are
+      # writable ONLY via GitOps PRs, the cluster is single-tenant, and the
+      # generic output here is a non-secret ConfigMap. Accepted deliberately —
+      # revisit before this cluster ever hosts a second tenant.
+      extraArgs:
+        unsafe-allow-generic-targets: true
 
 resources:
   - namespace.yaml
