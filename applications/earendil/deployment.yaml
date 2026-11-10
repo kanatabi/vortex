@@ -41,11 +41,10 @@ spec:
             - name: http
               containerPort: 3000
           env:
-            # adapter-node listen port + canonical origin for SSR redirects/CSP
+            # adapter-node listen port (ORIGIN was removed 2026-11-10 — no code
+            # reads it; canonical URLs derive per-request from the Host)
             - name: PORT
               value: "3000"
-            - name: ORIGIN
-              value: "https://ainurrofiq.com"
             # Server-side: internal service DNS (API has no public ingress)
             - name: API_BASE
               value: "http://lumen-http-server.lumen.svc.cluster.local"

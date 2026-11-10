@@ -82,7 +82,7 @@ frontend ingress; the API and Meilisearch have no ingress at all (§2).
 flowchart TB
   subgraph GIT["Git (source of truth)"]
     APP["App repos<br/>sv-fzr (earendil) · fzr-backend (lumen)<br/>(env.yaml.sample schemas)"]
-    MAN["k8s-platform-manifests<br/>app-of-apps · ExternalSecrets<br/>— no real values"]
+    MAN["vortex<br/>app-of-apps · ExternalSecrets<br/>— no real values"]
   end
   CI["GitHub Actions<br/>build + kustomize set image"]
   GHCR[("GHCR<br/>sha-pinned images")]
@@ -345,7 +345,7 @@ in this phase touches the VPS.
 
 > K3s's bundled Traefik was disabled in Phase 2. This phase installs the edge router and
 > certificate automation referenced by §1–§3. Both are deployed **as GitOps-managed
-> manifests/Charts in the `k8s-platform-manifests` repo** (see Phase 6), applied here
+> manifests/Charts in the `vortex` repo** (see Phase 6), applied here
 > manually only for the first bring-up.
 
 1. **Install Traefik (Helm), pinned to worker-2 (`node-pool=edge`):**
@@ -486,7 +486,7 @@ in this phase touches the VPS.
    ```
 
 3. **Meilisearch (namespace `search`), internal-only:** scaffolded in Git —
-   [`applications/meilisearch/`](k8s-platform-manifests/applications/meilisearch/), synced as the
+   [`applications/meilisearch/`](vortex/applications/meilisearch/), synced as the
    `meilisearch` Application.
    * Deployment pinned `getmeili/meilisearch:v1.10.0`, `nodeSelector: { node-pool: edge }`,
      PVC 5 Gi, `MEILI_DB_PATH=/data`; exposes Prometheus metrics (annotated for Alloy).
@@ -501,7 +501,7 @@ in this phase touches the VPS.
 
 ### Phase 5: Observability — Grafana LGTM (+VM) with Alloy DaemonSet
 
-Scaffolded in Git: [`applications/observability/`](k8s-platform-manifests/applications/observability/)
+Scaffolded in Git: [`applications/observability/`](vortex/applications/observability/)
 — synced by the hub as the `observability` Application.
 
 **Agent topology (the decision that matters on 4 GB workers):** Alloy is a
@@ -549,7 +549,7 @@ RED dashboards exist for every service even before apps instrument themselves.
 ### Phase 6: Argo CD Installation (as GitOps) & Master Node Isolation
 
 > Argo CD is installed **declaratively**: a kustomize overlay of the upstream manifests,
-> committed to `k8s-platform-manifests/platform/argocd/`. Manual `kubectl patch` calls are
+> committed to `vortex/platform/argocd/`. Manual `kubectl patch` calls are
 > impermanent (wiped by re-apply/upgrade) and defeat the GitOps story.
 
 1. **Repository structure for Argo CD's own install:**
@@ -577,7 +577,7 @@ RED dashboards exist for every service even before apps instrument themselves.
    kubectl get nodes        # sanity check before touching anything else
    ```
 
-3. **Clone this repo and set the placeholders** (`cavadevop`, `ainurrofiq.com`) in
+3. **Clone this repo and set the remaining placeholders** (`ainurrofiq.com` hosts) in
    `bootstrap/`, `apps/`, and `applications/*/kustomization.yaml` — then:
 
 4. **Apply the overlay (self-hosting bootstrap — the one manual apply):**
@@ -610,8 +610,8 @@ RED dashboards exist for every service even before apps instrument themselves.
 
 7. **If the manifests repo is PRIVATE, register credentials** (public repos skip this):
    ```bash
-   argocd repo add https://github.com/cavadevop/k8s-platform-manifests.git \
-     --username cavadevop --password <fine-grained-PAT: contents:read only>
+   argocd repo add https://github.com/kanatabi/vortex.git \
+     --username kanatabi --password <fine-grained-PAT: contents:read only>
    ```
    Then apply the hub (`Phase 7`) — within ~2 min the dashboard shows every `apps/`
    Application auto-syncing green. Anything red: check repo-server logs first.
@@ -630,12 +630,12 @@ RED dashboards exist for every service even before apps instrument themselves.
 > **Layout fix:** the hub points at `apps/`, which must contain **`Application` CRs**, not
 > raw resources. Each per-app Application declares its own destination namespace.
 
-Repository layout for `k8s-platform-manifests` (a working scaffold lives in
-[`k8s-platform-manifests/`](k8s-platform-manifests/) in this project — see
+Repository layout for `vortex` (a working scaffold lives in
+[`vortex/`](vortex/) in this project — see
 [README.md](README.md) for running it locally):
 
 ```text
-k8s-platform-manifests/
+vortex/
 ├── bootstrap/
 │   └── apps-hub.yaml              # root Application → path: apps/, recurse: false
 ├── apps/                          # Application definitions ONLY
@@ -679,7 +679,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: 'https://github.com/cavadevop/k8s-platform-manifests.git'
+    repoURL: 'https://github.com/kanatabi/vortex.git'
     targetRevision: HEAD
     path: apps/
     directory:
@@ -703,7 +703,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: 'https://github.com/cavadevop/k8s-platform-manifests.git'
+    repoURL: 'https://github.com/kanatabi/vortex.git'
     targetRevision: HEAD
     path: applications/lumen
   destination:
@@ -783,7 +783,7 @@ jobs:
       - name: Checkout Manifests Repo
         uses: actions/checkout@v4
         with:
-          repository: 'cavadevop/k8s-platform-manifests'
+          repository: 'kanatabi/vortex'
           token: ${{ secrets.MANIFESTS_REPO_PAT }}
 
       - name: Update Image Tag via Kustomize
@@ -902,9 +902,9 @@ The `ENV`/`PIN` placeholders are exactly what **kustomize overlays** substitute:
 The app's base manifests never contain env-specific values, and `kustomize edit set image`
 (CI) + overlay pins (humans) touch disjoint files.
 
-> **Scaffolded:** [`overlays/production/earendil/`](k8s-platform-manifests/overlays/production/earendil/)
+> **Scaffolded:** [`overlays/production/earendil/`](vortex/overlays/production/earendil/)
 > (JSON6902 patch swaps the inline env block for the ESO-rendered `app-config` ConfigMap)
-> and [`overlays/production/lumen/`](k8s-platform-manifests/overlays/production/lumen/)
+> and [`overlays/production/lumen/`](vortex/overlays/production/lumen/)
 > (needs no patch — the base already declares `envFrom` `lumen-secrets` as
 > `optional: true`, so ESO just *materializes* that Secret; k3d stays mock-friendly).
 > Going production = point that app's Application CR `source.path` at the overlay.
@@ -939,12 +939,12 @@ PUT  /v1/kv/data/<app>/<env>  (cas=N)       # save = new version, optimistic loc
 
 ### 5.6 Bootstrap, unsealing, and DR-critical seeds
 
-Deploy order: **all three pieces are now scaffolded** — [`applications/openbao/`](k8s-platform-manifests/applications/openbao/)
+Deploy order: **all three pieces are now scaffolded** — [`applications/openbao/`](vortex/applications/openbao/)
 (app `secrets`, worker-2, 1 Gi PVC, file storage; the header comment is the full
 init/unseal/AppRole command list), `apps/external-secrets-app.yaml` (Argo-managed **OCI
 Helm chart** on worker-1; requires one manual `kubectl create ns external-secrets`;
 deliberately not a kustomize+helmCharts dir so repo validation stays helm-free), and
-[`applications/secrets-plane/`](k8s-platform-manifests/applications/secrets-plane/)
+[`applications/secrets-plane/`](vortex/applications/secrets-plane/)
 (`ClusterSecretStore bao`, sync-wave 1 — self-heals via Argo retry while ESO CRDs land).
 Sequence: hub syncs openbao + external-secrets (wave 0) → *manual first-time*: init,
 unseal, enable `kv` v2 mount, create AppRoles/policies → seed the first values +
@@ -981,7 +981,7 @@ on `external_secret_ready` and `bao_unsealed` so a sealed store is loud, not sil
 * **OpenBao:** file-storage dir is its whole world — include the `secrets` PVC in the
   nightly `restic` set; DR runbook order: restore Bao PVC → unseal → ESO reconciles →
   then everything else. Unseal/root keys: §5.6 (never in the same backup as the data).
-* **Git state:** `k8s-platform-manifests` is the cluster's DR story — mirror it (e.g.,
+* **Git state:** `vortex` is the cluster's DR story — mirror it (e.g.,
   private GitLab/github second remote). A full rebuild = Phases 1–9 + §5.6 bootstrap +
   restore dumps.
 * **NotReady triage (runbook):** mass `NotReady` right after a boot/reboot is almost
