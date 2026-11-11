@@ -8,7 +8,17 @@ metadata:
 spec:
   ingressClassName: traefik
   rules:
-    - host: ainurrofiq.com
+    - host: www.gofar.id
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: earendil-web-server
+                port:
+                  name: http
+    - host: gofar.id
       http:
         paths:
           - path: /
@@ -21,4 +31,5 @@ spec:
   tls:
     - secretName: earendil-web-server-tls
       hosts:
-        - ainurrofiq.com
+        - www.gofar.id
+        - gofar.id
