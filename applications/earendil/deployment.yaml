@@ -42,18 +42,13 @@ spec:
           ports:
             - name: http
               containerPort: 3000
-          env:
-            # adapter-node listen port (ORIGIN was removed 2026-11-10 — no code
-            # reads it; canonical URLs derive per-request from the Host)
-            - name: PORT
-              value: "3000"
-            # Server-side: internal service DNS (API has no public ingress)
-            - name: API_BASE
-              value: "http://lumen-http-server.lumen.svc.cluster.local"
-            # Browser-side: "/" routes the search-suggest fetch to the SSR pod's
-            # same-origin proxy (src/routes/api/[...path]/+server.ts)
-            - name: PUBLIC_API_BASE
-              value: "/"
+          # ZERO config literals here (owner ruling 2026-11-11): every env value
+          # arrives as app-config — ESO-rendered from Bao in every real environment
+          # (overlays/*/earendil/externalsecret.yaml). optional:true keeps the bare
+          # k3d shape honest: no Bao -> the app's own runtime fallbacks answer
+          # (API_BASE unset = dev default) instead of a ConfigMapError.
+          envFrom:
+            - configMapRef: { name: app-config, optional: true }
           # No dedicated health route; the root page renders 200 in SSR.
           readinessProbe:
             httpGet: { path: /, port: http }

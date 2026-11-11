@@ -40,23 +40,14 @@ spec:
           ports:
             - name: http
               containerPort: 3000
-          env:
-            # adapter-node listen port; API_BASE = cluster-internal lumen (the ONLY
-            # backend route the portal knows — it never talks to Bao directly; the
-            # relay chain is mellon -> lumen /admin/bao -> Bao, same-origin proxy)
-            - name: PORT
-              value: "3000"
-            - name: API_BASE
-              value: "http://lumen-http-server.lumen.svc.cluster.local"
-            # adapter-node origin reconstruction (opt-in env knobs): without these
-            # the adapter ASSUMES https and its request.url diverges from the wire —
-            # which breaks SvelteKit's CSRF origin match on plain-http local runs and
-            # would fake-https the cookie `secure` derivation (fix/session-cookie-secure).
-            # Traefik rewrites both headers per request; clients cannot forge them.
-            - name: PROTOCOL_HEADER
-              value: "x-forwarded-proto"
-            - name: HOST_HEADER
-              value: "x-forwarded-host"
+          # ZERO config literals (owner ruling 2026-11-11): PORT, API_BASE and the
+          # adapter-node forwarded-header knobs (PROTOCOL_HEADER/HOST_HEADER —
+          # without them the adapter ASSUMES https: CSRF + cookie derivation would
+          # diverge from the wire; Traefik rewrites both headers, clients cannot
+          # forge them) all arrive as app-config via ESO from Bao. optional:true
+          # keeps bare-k3d honest: fallbacks, not ConfigMapError.
+          envFrom:
+            - configMapRef: { name: app-config, optional: true }
           # unauthenticated / is a 307 to /login — kubelet counts 2xx-3xx healthy.
           readinessProbe:
             httpGet: { path: /, port: http }
