@@ -146,7 +146,7 @@ Managed via your external DNS provider (Cloudflare, Namecheap, Route53, etc.):
 
 ### B. Internal Cluster DNS (Automatic via K3s)
 * Managed out-of-the-box by **CoreDNS** inside the cluster.
-* Microservices communicate dynamically using Kubernetes internal service endpoints (e.g., `lumen-pg-postgres.db.svc.cluster.local:5432` for reads/writes, `lumen-pg-repl.db.svc.cluster.local` for read-only).
+* Microservices communicate dynamically using Kubernetes internal service endpoints (e.g., `lumen-pg.db.svc.cluster.local:5432` for reads/writes, `lumen-pg-repl.db.svc.cluster.local` for read-only).
 
 ### C. Private VPN Mesh DNS (Automatic via NetBird)
 * Managed by **NetBird Magic DNS**.

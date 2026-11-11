@@ -36,8 +36,8 @@ spec:
   # ONE Patroni cluster (shared instances) serving BOTH environments —
   # separation lives at database + credentials level, selected per env by the
   # LUMEN_DB_URL behind each overlay's Bao path (INFRA doc §5):
-  #   kv/lumen/production -> .../lumen-pg-postgres.db.svc/lumen_production
-  #   kv/lumen/staging    -> .../lumen-pg-postgres.db.svc/lumen_staging
+  #   kv/lumen/production -> .../lumen-pg.db.svc/lumen_production
+  #   kv/lumen/staging    -> .../lumen-pg.db.svc/lumen_staging
   # Accepted trade-off: staging load spikes share prod's box (right for blog scale).
   databases:
     lumen_staging: db_user_staging
