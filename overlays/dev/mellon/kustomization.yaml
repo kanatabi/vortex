@@ -6,15 +6,3 @@ kind: Kustomization
 resources:
   - ../../../applications/mellon
   - externalsecret.yaml
-
-patches:
-  - target:
-      kind: Deployment
-      name: mellon-web-server
-    patch: |-
-      - op: remove
-        path: /spec/template/spec/containers/0/env
-      - op: add
-        path: /spec/template/spec/containers/0/envFrom
-        value:
-          - configMapRef: { name: app-config }

@@ -12,17 +12,9 @@ resources:
   - ../../../applications/earendil
   - externalsecret.yaml
 
+# (env swap patch retired 2026-11-11: the base is envFrom-only — see
+# applications/earendil/deployment.yaml; staging keeps only identity patches.)
 patches:
-  - target:
-      kind: Deployment
-      name: earendil-web-server
-    patch: |-
-      - op: remove
-        path: /spec/template/spec/containers/0/env
-      - op: add
-        path: /spec/template/spec/containers/0/envFrom
-        value:
-          - configMapRef: { name: app-config }
   - target:
       kind: Ingress
       name: earendil-web-server

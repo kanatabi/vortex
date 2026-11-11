@@ -7,16 +7,3 @@ kind: Kustomization
 resources:
   - ../../../applications/earendil
   - externalsecret.yaml
-
-patches:
-  # Swap the inline env block for the ESO-generated ConfigMap.
-  - target:
-      kind: Deployment
-      name: earendil-web-server
-    patch: |-
-      - op: remove
-        path: /spec/template/spec/containers/0/env
-      - op: add
-        path: /spec/template/spec/containers/0/envFrom
-        value:
-          - configMapRef: { name: app-config }
