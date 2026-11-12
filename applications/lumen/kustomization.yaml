@@ -19,4 +19,4 @@ resources:
 images:
 - name: lumen
   newName: ghcr.io/kanatabi/lumen
-  newTag: v1.0.0
+  newTag: v2.0.0
