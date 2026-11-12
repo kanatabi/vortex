@@ -13,4 +13,5 @@ resources:
 - ingress.yaml
 images:
 - name: mellon
-  newName: mellon
+  newName: ghcr.io/kanatabi/mellon
+  newTag: sha-e230468
