@@ -11,8 +11,11 @@ kind: Kustomization
 namespace: lumen
 
 resources:
-  - namespace.yaml
-  - http-server-deployment.yaml
-  - worker-deployment.yaml
-  - service.yaml
-  - migrate-job.yaml
+- namespace.yaml
+- http-server-deployment.yaml
+- worker-deployment.yaml
+- service.yaml
+- migrate-job.yaml
+images:
+- name: lumen
+  newName: lumen
