@@ -1,0 +1,30 @@
+name: auto-merge
+# ONLY acts on bump/<app>-<tag> PRs carrying label deploy-bump — and even
+# then only behind DEPLOY_AUTOMERGE=on (create it as a repo Variable; its
+# absence means OFF, which is the intended day-one state). Every guard lives
+# in anvil/bin/auto-merge.sh; this workflow is wires, not policy.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  guarded-merge:
+    if: startsWith(github.head_ref, 'bump/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: anvil
+        uses: actions/checkout@v4
+        with:
+          repository: kanatabi/anvil
+          path: .anvil
+          # ref: intentionally main-tip for the GUARD (it is reviewed code with
+          # no deploy authority); deploy authority stays SHA-pinned above.
+      - name: guard + merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .anvil/bin/auto-merge.sh "${{ github.event.pull_request.number }}"
