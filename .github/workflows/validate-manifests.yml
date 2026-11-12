@@ -1,0 +1,22 @@
+name: validate-manifests
+# Every PR and every push gets the anvil truth battery: builds, the kind-count
+# table, config-shape + PreSync assertions, and the RENDERED diff summary.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: anvil validate-manifests
+        uses: kanatabi/anvil/actions/validate-manifests@50e1257eda6354b4b27d46c9ee75cca62881cdef # v1
+        with:
+          base-ref: ${{ github.event.pull_request.base.sha || 'origin/main' }}
