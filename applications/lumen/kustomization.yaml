@@ -18,4 +18,5 @@ resources:
 - migrate-job.yaml
 images:
 - name: lumen
-  newName: lumen
+  newName: ghcr.io/kanatabi/lumen
+  newTag: v1.0.0
