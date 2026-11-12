@@ -20,7 +20,7 @@ spec:
       enableServiceLinks: false   # no legacy docker-style service env injection into app pods
       containers:
         - name: meilisearch
-          image: getmeili/meilisearch:v1.10.0
+          image: getmeili/meilisearch:v1.56.1
           env:
             - name: MEILI_DB_PATH
               value: /data
