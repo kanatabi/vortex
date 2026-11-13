@@ -11,12 +11,16 @@ permissions:
 
 jobs:
   validate:
+    # The check-run NAME is the contract with anvil's auto-merge guard (it
+    # polls for `validate-manifests`). Renaming this job or this workflow
+    # silently strands every bump PR — do it only together with the guard.
+    name: validate-manifests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: anvil validate-manifests
-        uses: kanatabi/anvil/actions/validate-manifests@50e1257eda6354b4b27d46c9ee75cca62881cdef # v1
+        uses: kanatabi/anvil/actions/validate-manifests@91281817e82e75085da84c76ae1a982d0a3ce085 # current
         with:
           base-ref: ${{ github.event.pull_request.base.sha || 'origin/main' }}
