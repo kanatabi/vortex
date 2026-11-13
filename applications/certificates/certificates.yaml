@@ -5,10 +5,20 @@
 # account. The cert expiry <21d alert (observability) is the safety net if
 # renewal ever silently stops.
 #
-# Surface map (INFRA §2 amendment 2026-11-08 — these are ALL the doors):
-#   gofar.id + www  -> earendil   (surface #1, content)
-#   console         -> mellon     (surface #2, admin portal)
-#   anor            -> grafana    (dashboard door, PR feat/grafana-door)
+# Surface map (INFRA §2 amendment 2026-11-08 + feat/environments-staging
+# hosts contract — these are ALL the doors):
+#   gofar.id + www        -> earendil production   (surface #1, content)
+#   staging.gofar.id      -> earendil staging      (www is production-only;
+#                                                   staging never wears it)
+#   console.gofar.id      -> mellon production     (surface #2, admin portal)
+#   staging-console       -> mellon staging
+#   anor.gofar.id         -> grafana               (dashboard door)
+# DNS-01 works on every cluster, so staging certificates ride the SAME
+# ClusterIssuer (components/selfsigned retired with the rehearsal tree).
+# NOTE for the staging overlays: kustomize nameSuffix does NOT reach this
+# dir (the certificates app is synced un-suffixed from applications/);
+# staging identity here lives in the object names + the suffixed Secret
+# names the staging Ingresses' tls blocks reference.
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -55,5 +65,39 @@ spec:
   commonName: anor.gofar.id
   dnsNames:
     - anor.gofar.id
+  duration: 2160h0m0s      # 90d
+  renewBefore: 720h0m0s    # 30d
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: staging-gofar-id
+  namespace: earendil
+spec:
+  secretName: tls-gofar-staging    # referenced verbatim by the staging
+  #                     Ingress (environments/staging/earendil patches spec.tls)
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  commonName: staging.gofar.id
+  dnsNames:
+    - staging.gofar.id
+  duration: 2160h0m0s      # 90d
+  renewBefore: 720h0m0s    # 30d
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: staging-console-gofar-id
+  namespace: mellon
+spec:
+  secretName: tls-console-staging  # referenced verbatim by the staging portal
+  #                     Ingress (environments/staging/mellon patches spec.tls)
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  commonName: staging-console.gofar.id
+  dnsNames:
+    - staging-console.gofar.id
   duration: 2160h0m0s      # 90d
   renewBefore: 720h0m0s    # 30d

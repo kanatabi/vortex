@@ -1,0 +1,116 @@
+# Staging view of mellon (environments tree, feat/environments-staging).
+# Co-tenants the production namespace `mellon`; identity = nameSuffix
+# "-staging" + labels transformer omicron/env=staging (includeSelectors —
+# env-restricted selectors are what make co-tenancy safe). Host per the
+# NAMING CONTRACT: staging-console.gofar.id ONLY (console.gofar.id itself
+# is production surface #2, unchanged).
+#
+# VAULT-VALUE CONTRACT (seeding docs): kv/mellon/staging property API_BASE
+# MUST be http://lumen-http-server-staging.lumen.svc.cluster.local — the
+# staging portal relays to the staging cms fleet, never production. The
+# manifest job (guaranteeing that suffixed Service exists in ns lumen) is
+# done by environments/staging/lumen + this suffix contract.
+#
+# Same nameSuffix spec-field mechanics as environments/staging/earendil
+# (patches pre-suffix, references explicit, authored files final-named).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: mellon
+nameSuffix: -staging
+
+resources:
+  - ../../../applications/mellon
+  - externalsecret.yaml
+
+components:
+  - ../../../components/single-node
+  - ../../../components/config-gate
+
+# Image pins mirror the base stanza (bump tooling keeps base + env overlays
+# in ONE commit): mellon v1.1.0
+images:
+  - name: mellon
+    newName: ghcr.io/kanatabi/mellon
+    newTag: v1.1.0
+  # config-gate decodes epochs with the lumen binary — LOCKSTEP tag.
+  - name: lumen
+    newName: ghcr.io/kanatabi/lumen
+    newTag: v2.2.0
+
+patches:
+  # `ns mellon` is a CO-TENANT object — deleted here; rendered label-free
+  # exactly once by environments/foundation/lumen-admin (see the full story
+  # in environments/staging/lumen/kustomization.yaml).
+  - patch: |-
+      $patch: delete
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: mellon
+
+  # TLS ownership -> the staging Certificate staging-console-gofar-id in
+  # applications/certificates (renders tls-console-staging; one auditable
+  # cert list for the estate, synced by the production hub's certificates
+  # app); shim annotation off to avoid double
+  # issuance against the same host. Backend name stated EXPLICITLY per the
+  # naming contract (must equal the suffixed Service).
+  - target:
+      kind: Ingress
+      name: mellon-web-server
+    patch: |-
+      - op: remove
+        path: /metadata/annotations/cert-manager.io~1cluster-issuer
+      - op: replace
+        path: /spec/rules
+        value:
+          - host: staging-console.gofar.id
+            http:
+              paths:
+                - path: /
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: mellon-web-server-staging
+                      port:
+                        name: http
+      - op: replace
+        path: /spec/tls
+        value:
+          - secretName: tls-console-staging
+            hosts:
+              - staging-console.gofar.id
+
+  - target:
+      kind: Deployment
+      name: mellon-web-server
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/envFrom/0/configMapRef/name
+        value: app-config-staging
+
+  # THE EPOCH TRIO — annotation == --declared == ES annotation ("0").
+  - target:
+      kind: Deployment
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: unused
+      spec:
+        template:
+          metadata:
+            annotations:
+              omicron/config.epoch: "0"
+  - target:
+      kind: Job
+      name: config-gate
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/args
+        value: ["config", "check-epoch", "--app", "mellon", "--env", "staging", "--declared", "0"]
+
+labels:
+  - pairs:
+      omicron/env: staging
+    includeSelectors: true
