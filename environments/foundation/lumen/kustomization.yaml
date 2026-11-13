@@ -55,11 +55,12 @@ components:
 images:
 - name: lumen
   newName: ghcr.io/kanatabi/lumen
-  newTag: v2.2.0
+  newTag: v3.0.0
 
   # THE EPOCH TRIO for the shared plane: pod annotation == gate --declared
   # == ES annotation, byte-equal ("0" — admin boots at epoch 0).
       # Full-args replacement (never element-wise) — see component header.
+    # Full-args replacement (never element-wise) — see component header.
 patches:
 - patch: |-
     apiVersion: apps/v1
