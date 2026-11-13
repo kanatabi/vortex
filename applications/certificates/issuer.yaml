@@ -1,0 +1,31 @@
+# ClusterIssuer letsencrypt-prod — every public cert in the estate is issued
+# through this one ACME account. dns01/Cloudflare is the only solver: the API
+# has no public ingress (§2), so http01 could never reach lumen/Bao anyway —
+# and DNS-01 also covers the wildcard-free multi-surface layout cleanly.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    # THE ONE CONFIG-LITERAL EXCEPTION of the estate (owner ruling with this
+    # PR): the "zero config literals in Git" doctrine says values live in Bao.
+    # This ACME contact address is consciously bent out of that rule because
+    # it is NOT runtime-tunable app config — it is a PUBLIC identifier (LE
+    # puts it in account metadata, expiry notices only) that belongs with the
+    # identity of the issuer object it configures, reviewable in the same PR
+    # as the issuer itself. Moving it behind ESO would add a render chain for
+    # a non-secret and make the issuer depend on its own secret plane at
+    # bootstrap — a circularity, not a safety gain. Everything ELSE (the
+    # token, keys, app config) stays in Bao.
+    email: dev@gofar.id
+    privateKeySecretRef:
+      name: letsencrypt-prod-account-key   # generated in-cluster by cert-manager
+    solvers:
+      - dns01:
+          cloudflare:
+            apiTokenSecretRef:
+              name: cf-token               # rendered by the ExternalSecret in this dir
+              key: api-token
+              namespace: cert-manager      # explicit: solver reads from the install ns
