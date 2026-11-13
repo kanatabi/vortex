@@ -1,0 +1,26 @@
+# FOUNDATION plane view of lumen-db: the ESO-free base (Zalando
+# V1Postgresql CR) + placement collapse — numberOfInstances 2->1 via the
+# component. Re-homed from overlays/production/lumen-db (feat/environments):
+# ONE Patroni cluster serves ALL environments — the 3 logical databases
+# (lumen_admin / lumen_staging / lumen_production, owners db_user_admin /
+# db_user_staging / db_user_production) live in the BASE spec.dbs/spec.users;
+# the per-env split is the LUMEN_DB_URL behind each overlay's Bao path
+# (INFRA doc §5). The operator itself stays a MANUAL prereq (pinned apply,
+# runbook); this chain only ships the cluster CR.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../../applications/lumen-db
+
+components:
+  - ../../../components/single-node
+
+labels:
+  - pairs:
+      omicron/env: shared
+    # The Zalando CR is unregistered (no selector semantics kustomize knows)
+    # and the operator builds its own StatefulSets/Services — labels here are
+    # metadata-only by contract.
+    includeSelectors: false
+    includeTemplates: true
