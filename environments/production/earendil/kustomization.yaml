@@ -27,12 +27,12 @@ namespace: earendil
 nameSuffix: -production
 
 resources:
-  - ../../../applications/earendil
-  - externalsecret.yaml
+- ../../../applications/earendil
+- externalsecret.yaml
 
 components:
-  - ../../../components/single-node
-  - ../../../components/config-gate
+- ../../../components/single-node
+- ../../../components/config-gate
 
 # The config-gate Job (rendered by the component into THIS namespace) runs
 # the lumen binary — same tag the backend itself ships, deliberately.
@@ -43,12 +43,12 @@ components:
 # convergence round). A gate decoder older than the app's config epoch is
 # how drift starts.
 images:
-  - name: earendil
-    newName: ghcr.io/kanatabi/earendil
-    newTag: v1.1.0
-  - name: lumen
-    newName: ghcr.io/kanatabi/lumen
-    newTag: v2.2.0
+- name: earendil
+  newName: ghcr.io/kanatabi/earendil
+  newTag: v1.1.0
+- name: lumen
+  newName: ghcr.io/kanatabi/lumen
+  newTag: v2.2.0
 
 # TLS ownership moves to the certificates app here (PR feat/certificates-app):
 # the explicit Certificate gofar-id renders Secret tls-gofar; the base's
@@ -61,88 +61,89 @@ images:
 # gone => shim ignores the Ingress entirely; the Secret name match is the
 # whole binding). The rules keep BOTH production hosts (www + apex — staging
 # never wears www); the backend name is stated final per the naming contract.
-patches:
   # `ns earendil` is a CO-TENANT object — deleted here; foundation-owned
   # (environments/foundation/lumen; story in
   # environments/staging/lumen/kustomization.yaml).
-  - patch: |-
-      $patch: delete
-      apiVersion: v1
-      kind: Namespace
-      metadata:
-        name: earendil
 
-  - target:
-      kind: Ingress
-      name: earendil-web-server
-    patch: |-
-      - op: remove
-        path: /metadata/annotations/cert-manager.io~1cluster-issuer
-      - op: replace
-        path: /spec/rules
-        value:
-          - host: www.gofar.id
-            http:
-              paths:
-                - path: /
-                  pathType: Prefix
-                  backend:
-                    service:
-                      name: earendil-web-server-production
-                      port:
-                        name: http
-          - host: gofar.id
-            http:
-              paths:
-                - path: /
-                  pathType: Prefix
-                  backend:
-                    service:
-                      name: earendil-web-server-production
-                      port:
-                        name: http
-      - op: replace
-        path: /spec/tls
-        value:
-          - secretName: tls-gofar
-            hosts:
-              - gofar.id
-              - www.gofar.id
 
   # envFrom -> the suffixed ConfigMap this overlay's ES renders (its
   # target.name is authored final in externalsecret.yaml).
-  - target:
-      kind: Deployment
-      name: earendil-web-server
-    patch: |-
-      - op: replace
-        path: /spec/template/spec/containers/0/envFrom/0/configMapRef/name
-        value: app-config-production
 
   # THE EPOCH TRIO — annotation == --declared == ES annotation ("0"); the
   # bump flow edits all three lines in one commit (CI asserts equality).
-  - target:
-      kind: Deployment
-    patch: |-
-      apiVersion: apps/v1
-      kind: Deployment
-      metadata:
-        name: unused
-      spec:
-        template:
-          metadata:
-            annotations:
-              omicron/config.epoch: "0"
-  - target:
-      kind: Job
-      name: config-gate
-    patch: |-
       # Full-args replacement (never element-wise) — see component header.
-      - op: replace
-        path: /spec/template/spec/containers/0/args
-        value: ["config", "check-epoch", "--app", "earendil", "--env", "production", "--declared", "0"]
+patches:
+- patch: |-
+    $patch: delete
+    apiVersion: v1
+    kind: Namespace
+    metadata:
+      name: earendil
+- patch: |-
+    - op: remove
+      path: /metadata/annotations/cert-manager.io~1cluster-issuer
+    - op: replace
+      path: /spec/rules
+      value:
+        - host: www.gofar.id
+          http:
+            paths:
+              - path: /
+                pathType: Prefix
+                backend:
+                  service:
+                    name: earendil-web-server-production
+                    port:
+                      name: http
+        - host: gofar.id
+          http:
+            paths:
+              - path: /
+                pathType: Prefix
+                backend:
+                  service:
+                    name: earendil-web-server-production
+                    port:
+                      name: http
+    - op: replace
+      path: /spec/tls
+      value:
+        - secretName: tls-gofar
+          hosts:
+            - gofar.id
+            - www.gofar.id
+  target:
+    kind: Ingress
+    name: earendil-web-server
+- patch: |-
+    - op: replace
+      path: /spec/template/spec/containers/0/envFrom/0/configMapRef/name
+      value: app-config-production
+  target:
+    kind: Deployment
+    name: earendil-web-server
+- patch: |-
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: unused
+    spec:
+      template:
+        metadata:
+          annotations:
+            omicron/config.epoch: "0"
+  target:
+    kind: Deployment
+- patch: |-
+    # Full-args replacement (never element-wise) — see component header.
+    - op: replace
+      path: /spec/template/spec/containers/0/args
+      value: ["config", "check-epoch", "--app", "earendil", "--env", "production", "--declared", "0"]
+  target:
+    kind: Job
+    name: config-gate
 
 labels:
-  - pairs:
-      omicron/env: production
-    includeSelectors: true
+- includeSelectors: true
+  pairs:
+    omicron/env: production

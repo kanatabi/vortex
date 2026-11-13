@@ -30,22 +30,22 @@ kind: Kustomization
 # ns-less by design — the Application CR's destination.namespace `lumen`
 # places them, exactly like every other overlay's config-gate).
 
-resources:
   # Foundation-owned app namespaces: lumen/earendil/mellon are CO-TENANT
   # objects (staging + production fleets live in them), so the env trees
   # DELETE their copies ($patch: delete) and this single foundation overlay
   # renders them once — before the app hubs apply, structurally.
-  - namespaces.yaml
-  - lumen-admin-deployment.yaml
-  - lumen-admin-service.yaml
-  - lumen-admin-migrate-job.yaml
-  - externalsecret.yaml
+resources:
+- namespaces.yaml
+- lumen-admin-deployment.yaml
+- lumen-admin-service.yaml
+- lumen-admin-migrate-job.yaml
+- externalsecret.yaml
 
-components:
   # VPS shape collapse (the admin Deployment's nodeAffinity no-ops away on
   # one node) + the PreSync epoch gate, --env shared (foundation plane).
-  - ../../../components/single-node
-  - ../../../components/config-gate
+components:
+- ../../../components/single-node
+- ../../../components/config-gate
 
 # LOCKSTEP (SAME-ENV — foundation): the lumen-foundation bump edits the
 # `name: lumen` stanzas inside environments/foundation/* in ONE commit
@@ -53,36 +53,36 @@ components:
 # since the convergence round — env trees are the only version homes).
 # The gate decodes epochs with the same image the admin fleet runs.
 images:
-  - name: lumen
-    newName: ghcr.io/kanatabi/lumen
-    newTag: v2.2.0
+- name: lumen
+  newName: ghcr.io/kanatabi/lumen
+  newTag: v2.2.0
 
-patches:
   # THE EPOCH TRIO for the shared plane: pod annotation == gate --declared
   # == ES annotation, byte-equal ("0" — admin boots at epoch 0).
-  - target:
-      kind: Deployment
-    patch: |-
-      apiVersion: apps/v1
-      kind: Deployment
-      metadata:
-        name: unused
-      spec:
-        template:
-          metadata:
-            annotations:
-              omicron/config.epoch: "0"
-  - target:
-      kind: Job
-      name: config-gate
-    patch: |-
       # Full-args replacement (never element-wise) — see component header.
-      - op: replace
-        path: /spec/template/spec/containers/0/args
-        value: ["config", "check-epoch", "--app", "lumen", "--env", "shared", "--declared", "0"]
+patches:
+- patch: |-
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: unused
+    spec:
+      template:
+        metadata:
+          annotations:
+            omicron/config.epoch: "0"
+  target:
+    kind: Deployment
+- patch: |-
+    # Full-args replacement (never element-wise) — see component header.
+    - op: replace
+      path: /spec/template/spec/containers/0/args
+      value: ["config", "check-epoch", "--app", "lumen", "--env", "shared", "--declared", "0"]
+  target:
+    kind: Job
+    name: config-gate
 
 labels:
-  - pairs:
-      omicron/env: shared
-    includeSelectors: false
-    includeTemplates: true
+- includeTemplates: true
+  pairs:
+    omicron/env: shared

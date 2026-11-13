@@ -25,12 +25,12 @@ namespace: lumen
 nameSuffix: -production
 
 resources:
-  - ../../../applications/lumen
-  - externalsecret.yaml
+- ../../../applications/lumen
+- externalsecret.yaml
 
 components:
-  - ../../../components/single-node
-  - ../../../components/config-gate
+- ../../../components/single-node
+- ../../../components/config-gate
 
 # THE BASE NO LONGER PINS IMAGES (convergence 2026-11-13, fixture-proven):
 # a base image transformation rewrites `image: lumen` BEFORE this overlay's
@@ -45,44 +45,16 @@ components:
 # what keeps gate and app in step). The gate must never decode epochs with
 # an image older than the app's.
 images:
-  - name: lumen
-    newName: ghcr.io/kanatabi/lumen
-    newTag: v2.2.0
+- name: lumen
+  newName: ghcr.io/kanatabi/lumen
+  newTag: v2.2.0
 
-patches:
   # `ns lumen` is a CO-TENANT object — deleted here; foundation-owned
   # (environments/foundation/lumen renders it; full story in
   # environments/staging/lumen/kustomization.yaml).
-  - patch: |-
-      $patch: delete
-      apiVersion: v1
-      kind: Namespace
-      metadata:
-        name: lumen
 
   # envFrom -> the suffixed Secret this overlay's ES materializes (ES
   # target.name is authored final in externalsecret.yaml).
-  - target:
-      kind: Deployment
-      name: lumen-http-server
-    patch: |-
-      - op: replace
-        path: /spec/template/spec/containers/0/envFrom/0/secretRef/name
-        value: lumen-secrets-production
-  - target:
-      kind: Deployment
-      name: lumen-worker
-    patch: |-
-      - op: replace
-        path: /spec/template/spec/containers/0/envFrom/0/secretRef/name
-        value: lumen-secrets-production
-  - target:
-      kind: Job
-      name: lumen-migrate
-    patch: |-
-      - op: replace
-        path: /spec/template/spec/containers/0/envFrom/0/secretRef/name
-        value: lumen-secrets-production
 
   # CMS role (contract): deployment IDENTITY, deliberately inline (vault must
   # never be able to silently re-role a fleet). LUMEN_ADMIN_URL is NOT inline
@@ -90,54 +62,83 @@ patches:
   # other in-cluster endpoint; the literal-ban battery stays strict
   # (convergence ruling 2026-11-13: the exemption was NOT granted, the value
   # moved — kv/lumen/shared property LUMEN_ADMIN_URL).
-  - target:
-      kind: Deployment
-      name: lumen-http-server
-    patch: |-
-      - op: add
-        path: /spec/template/spec/containers/0/env
-        value:
-          - name: LUMEN_ROLE
-            value: cms
-  - target:
-      kind: Deployment
-      name: lumen-worker
-    patch: |-
-      - op: add
-        path: /spec/template/spec/containers/0/env
-        value:
-          - name: LUMEN_ROLE
-            value: cms
 
   # THE EPOCH TRIO — annotation value == gate --declared == ES annotation,
   # byte-equal ("7" — carried across from the pre-tree lockstep bumps; the
   # bump flow edits all three lines in one commit, CI asserts equality).
-  - target:
-      kind: Deployment
-    patch: |-
-      apiVersion: apps/v1
-      kind: Deployment
-      metadata:
-        name: unused
-      spec:
-        template:
-          metadata:
-            annotations:
-              omicron/config.epoch: "7"
-  - target:
-      kind: Job
-      name: config-gate
-    patch: |-
       # Full-args replacement (never element-wise) — see component header.
-      - op: replace
-        path: /spec/template/spec/containers/0/args
-        value: ["config", "check-epoch", "--app", "lumen", "--env", "production", "--declared", "7"]
+patches:
+- patch: |-
+    $patch: delete
+    apiVersion: v1
+    kind: Namespace
+    metadata:
+      name: lumen
+- patch: |-
+    - op: replace
+      path: /spec/template/spec/containers/0/envFrom/0/secretRef/name
+      value: lumen-secrets-production
+  target:
+    kind: Deployment
+    name: lumen-http-server
+- patch: |-
+    - op: replace
+      path: /spec/template/spec/containers/0/envFrom/0/secretRef/name
+      value: lumen-secrets-production
+  target:
+    kind: Deployment
+    name: lumen-worker
+- patch: |-
+    - op: replace
+      path: /spec/template/spec/containers/0/envFrom/0/secretRef/name
+      value: lumen-secrets-production
+  target:
+    kind: Job
+    name: lumen-migrate
+- patch: |-
+    - op: add
+      path: /spec/template/spec/containers/0/env
+      value:
+        - name: LUMEN_ROLE
+          value: cms
+  target:
+    kind: Deployment
+    name: lumen-http-server
+- patch: |-
+    - op: add
+      path: /spec/template/spec/containers/0/env
+      value:
+        - name: LUMEN_ROLE
+          value: cms
+  target:
+    kind: Deployment
+    name: lumen-worker
+- patch: |-
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: unused
+    spec:
+      template:
+        metadata:
+          annotations:
+            omicron/config.epoch: "7"
+  target:
+    kind: Deployment
+- patch: |-
+    # Full-args replacement (never element-wise) — see component header.
+    - op: replace
+      path: /spec/template/spec/containers/0/args
+      value: ["config", "check-epoch", "--app", "lumen", "--env", "production", "--declared", "7"]
+  target:
+    kind: Job
+    name: config-gate
 
-labels:
-  - pairs:
-      omicron/env: production
     # selectors participate — co-tenancy with staging in ONE namespace only
     # holds if every production selector is env-restricted (and the suffixed
     # names mean this fleet rolls out as NEW objects; the unsuffixed
     # pre-contract objects prune in the same sync).
-    includeSelectors: true
+labels:
+- includeSelectors: true
+  pairs:
+    omicron/env: production

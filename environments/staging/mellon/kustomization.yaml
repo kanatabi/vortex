@@ -20,36 +20,29 @@ namespace: mellon
 nameSuffix: -staging
 
 resources:
-  - ../../../applications/mellon
-  - externalsecret.yaml
+- ../../../applications/mellon
+- externalsecret.yaml
 
 components:
-  - ../../../components/single-node
-  - ../../../components/config-gate
+- ../../../components/single-node
+- ../../../components/config-gate
 
 # THE BASES NO LONGER PIN IMAGES (convergence: a base stanza outranks the
 # env tree — env overlays are the only version homes). The mellon-fleet
 # bump edits this stanza AND the gate's lumen stanza below in ONE commit
 # (same-env lockstep; a production bump never reaches staging)): mellon v1.1.0
-images:
-  - name: mellon
-    newName: ghcr.io/kanatabi/mellon
-    newTag: v1.1.0
   # config-gate decodes epochs with the lumen binary — LOCKSTEP tag.
-  - name: lumen
-    newName: ghcr.io/kanatabi/lumen
-    newTag: v2.2.0
+images:
+- name: lumen
+  newName: ghcr.io/kanatabi/lumen
+  newTag: v2.2.0
+- name: mellon
+  newName: ghcr.io/kanatabi/mellon
+  newTag: v1.1.0
 
-patches:
   # `ns mellon` is a CO-TENANT object — deleted here; rendered ONCE by
   # environments/foundation/lumen (see the full story in
   # environments/staging/lumen/kustomization.yaml).
-  - patch: |-
-      $patch: delete
-      apiVersion: v1
-      kind: Namespace
-      metadata:
-        name: mellon
 
   # TLS ownership -> the staging Certificate staging-console-gofar-id in
   # applications/certificates (renders tls-console-staging; one auditable
@@ -57,62 +50,69 @@ patches:
   # app); shim annotation off to avoid double
   # issuance against the same host. Backend name stated EXPLICITLY per the
   # naming contract (must equal the suffixed Service).
-  - target:
-      kind: Ingress
-      name: mellon-web-server
-    patch: |-
-      - op: remove
-        path: /metadata/annotations/cert-manager.io~1cluster-issuer
-      - op: replace
-        path: /spec/rules
-        value:
-          - host: staging-console.gofar.id
-            http:
-              paths:
-                - path: /
-                  pathType: Prefix
-                  backend:
-                    service:
-                      name: mellon-web-server-staging
-                      port:
-                        name: http
-      - op: replace
-        path: /spec/tls
-        value:
-          - secretName: tls-console-staging
-            hosts:
-              - staging-console.gofar.id
 
-  - target:
-      kind: Deployment
-      name: mellon-web-server
-    patch: |-
-      - op: replace
-        path: /spec/template/spec/containers/0/envFrom/0/configMapRef/name
-        value: app-config-staging
 
   # THE EPOCH TRIO — annotation == --declared == ES annotation ("0").
-  - target:
-      kind: Deployment
-    patch: |-
-      apiVersion: apps/v1
-      kind: Deployment
-      metadata:
-        name: unused
-      spec:
-        template:
-          metadata:
-            annotations:
-              omicron/config.epoch: "0"
-  - target:
-      kind: Job
-      name: config-gate
-    patch: |-
-      - op: replace
-        path: /spec/template/spec/containers/0/args
-        value: ["config", "check-epoch", "--app", "mellon", "--env", "staging", "--declared", "0"]
+patches:
+- patch: |-
+    $patch: delete
+    apiVersion: v1
+    kind: Namespace
+    metadata:
+      name: mellon
+- patch: |-
+    - op: remove
+      path: /metadata/annotations/cert-manager.io~1cluster-issuer
+    - op: replace
+      path: /spec/rules
+      value:
+        - host: staging-console.gofar.id
+          http:
+            paths:
+              - path: /
+                pathType: Prefix
+                backend:
+                  service:
+                    name: mellon-web-server-staging
+                    port:
+                      name: http
+    - op: replace
+      path: /spec/tls
+      value:
+        - secretName: tls-console-staging
+          hosts:
+            - staging-console.gofar.id
+  target:
+    kind: Ingress
+    name: mellon-web-server
+- patch: |-
+    - op: replace
+      path: /spec/template/spec/containers/0/envFrom/0/configMapRef/name
+      value: app-config-staging
+  target:
+    kind: Deployment
+    name: mellon-web-server
+- patch: |-
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: unused
+    spec:
+      template:
+        metadata:
+          annotations:
+            omicron/config.epoch: "0"
+  target:
+    kind: Deployment
+- patch: |-
+    - op: replace
+      path: /spec/template/spec/containers/0/args
+      value: ["config", "check-epoch", "--app", "mellon", "--env", "staging", "--declared", "0"]
+  target:
+    kind: Job
+    name: config-gate
 
 labels:
-  - pairs:
-      omicron/env: staging
-    includeSelectors: true
+- includeSelectors: true
+  pairs:
+    omicron/env: staging
