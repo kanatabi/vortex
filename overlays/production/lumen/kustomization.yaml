@@ -10,5 +10,47 @@ resources:
 
 # Single-node VPS shape (owner decision 2026-11-10): collapses the 2-replica
 # http-server anti-affinity pair. No selfsigned — real TLS via the certificates app.
+# config-gate: the PreSync epoch gate (component header) — this app needs no
+# images stanza here, the base already maps `lumen` to its prod tag.
 components:
   - ../../../components/single-node
+  - ../../../components/config-gate
+
+# The base's images stanza transformed the base's pods — NOT the component's
+# gate Job, which joins at THIS level. Re-stating the mapping (same values:
+# kustomize matches through the base's carried-over name annotation, so the
+# migration Job is idempotent) resolves `image: lumen` in config-gate too.
+# LOCKSTEP: bump tooling edits ghcr.io/kanatabi/lumen newTag HERE, in
+# overlays/production/earendil, and overlays/production/mellon in ONE commit —
+# the gate must never decode epochs with an image older than the app's.
+images:
+  - name: lumen
+    newName: ghcr.io/kanatabi/lumen
+    newTag: v2.0.0
+
+# THE EPOCH PAIR — both lines below must stay byte-equal on --declared ("0"),
+# the bump flow edits annotation + args in ONE commit (CI asserts equality).
+patches:
+  # omicron/config.epoch on BOTH lumen pod templates (http-server + worker —
+  # one app, one epoch; strategic merge preserves the prometheus scrape
+  # annotations already there).
+  - target:
+      kind: Deployment
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: unused
+      spec:
+        template:
+          metadata:
+            annotations:
+              omicron/config.epoch: "0"
+  # Full-args replacement for the gate (never element-wise).
+  - target:
+      kind: Job
+      name: config-gate
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/args
+        value: ["config", "check-epoch", "--app", "lumen", "--env", "production", "--declared", "0"]
