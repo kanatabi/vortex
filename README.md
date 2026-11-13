@@ -159,7 +159,7 @@ component died with the rehearsal trees.
 ├── environments/              # THE ENV AXIS (nameSuffix + omicron/env per the contract)
 │   ├── foundation/            # shared plumbing, no suffix: openbao, external-secrets,
 │   │   │                      # secrets-plane, lumen-db, meilisearch, observability,
-│   │   └── lumen-admin/       # the Control Plane (+ the co-tenant app namespaces)
+│   │   └── lumen/             # the lumen-admin Control Plane overlay (+ co-tenant app ns)
 │   ├── staging/               # lumen, earendil, mellon — suffix -staging
 │   └── production/            # lumen, earendil, mellon — suffix -production
 └── platform/
