@@ -21,7 +21,7 @@ namespace: mellon
 nameSuffix: -staging
 
 resources:
-- ../../../applications/mellon
+- ../../../bases/mellon
 - externalsecret.yaml
 - ingress.yaml
 

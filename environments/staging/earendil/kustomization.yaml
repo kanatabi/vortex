@@ -26,7 +26,7 @@ namespace: earendil
 nameSuffix: -staging
 
 resources:
-- ../../../applications/earendil
+- ../../../bases/earendil
 - externalsecret.yaml
 - ingress.yaml
 
@@ -56,7 +56,7 @@ images:
 
   # TLS ownership -> the authored ingress.yaml, staging edition (same story
   # as the production overlay): the explicit Certificate staging-gofar-id in
-  # applications/certificates renders tls-gofar-staging (one auditable cert
+  # bases/certificates renders tls-gofar-staging (one auditable cert
   # list for the whole estate — the Ingress merely consumes its Secret,
   # annotation-free so the ingress-shim can never double-issue). Backend
   # name stated FINAL per the contract — a rename of the Service without

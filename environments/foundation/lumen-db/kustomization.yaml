@@ -11,7 +11,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  - ../../../applications/lumen-db
+  - ../../../bases/lumen-db
 
 components:
   - ../../../components/single-node

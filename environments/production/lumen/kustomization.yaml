@@ -25,7 +25,7 @@ namespace: lumen
 nameSuffix: -production
 
 resources:
-- ../../../applications/lumen
+- ../../../bases/lumen
 - externalsecret.yaml
 
 components:

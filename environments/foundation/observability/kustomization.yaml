@@ -9,7 +9,7 @@
 # external_labels are NOT the mechanism — one Alloy fleet can't stamp what
 # it isn't. Instead the Alloy pod-discovery pipeline copies the POD label
 # omicron/env (shared|staging|production) into an `env` series/log label
-# (see applications/observability/alloy/config.alloy); the env trees stamp
+# (see bases/observability/alloy/config.alloy); the env trees stamp
 # that label on every pod template they render.
 #
 # SIZING AUDIT (the brief's budget vs the base, checked line by line):
@@ -26,7 +26,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  - ../../../applications/observability
+  - ../../../bases/observability
   - alerting.yaml
 
 components:

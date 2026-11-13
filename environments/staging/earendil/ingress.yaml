@@ -4,7 +4,7 @@
 # anymore — hosts, backend and TLS are written for staging; nameSuffix
 # rewrites only metadata.name.
 #
-# TLS: the explicit Certificate staging-gofar-id in applications/certificates
+# TLS: the explicit Certificate staging-gofar-id in bases/certificates
 # renders tls-gofar-staging — one auditable cert list for the whole estate,
 # synced by the production hub's certificates app; staging Ingresses merely
 # consume its Secret, exactly like production consumes tls-gofar. NO

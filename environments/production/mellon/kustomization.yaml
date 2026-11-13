@@ -20,7 +20,7 @@ namespace: mellon
 nameSuffix: -production
 
 resources:
-- ../../../applications/mellon
+- ../../../bases/mellon
 - externalsecret.yaml
 - ingress.yaml
 

@@ -6,7 +6,7 @@
 # TLS ownership lives in the certificates app: the explicit Certificate
 # gofar-id renders Secret tls-gofar — UNSUFFIXED on purpose (the
 # certificates app is foundation-plane plumbing synced from
-# applications/certificates; suffixed Ingress names do not imply suffixed
+# bases/certificates; suffixed Ingress names do not imply suffixed
 # certificate Secrets). NO cert-manager.io/cluster-issuer annotation ON
 # PURPOSE: the ingress-shim would auto-create a SHADOW Certificate (own
 # name, own Secret) for the same hostnames — double issuance against

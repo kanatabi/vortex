@@ -1,5 +1,5 @@
 # Schema migration for the ADMIN database (lumen_admin, owner
-# db_user_admin) — the same lifecycle doctrine as applications/lumen's
+# db_user_admin) — the same lifecycle doctrine as bases/lumen's
 # migrate Job (PreSync hook, must succeed or the sync blocks), but
 # envFrom lumen-admin-secrets so `lumen migrate` runs against the admin
 # DB, not a tenant's. The cms trees' migrate Jobs cover lumen_staging /

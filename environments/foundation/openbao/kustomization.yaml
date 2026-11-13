@@ -8,12 +8,12 @@
 # Cluster SHAPE: single VPS node today — the single-node component collapses
 # the 3-node blueprint (owner decision 2026-11-10).
 # The manual init/unseal/AppRole bootstrap exception is documented in the base
-# (applications/openbao/openbao.yaml header) and applies here unchanged.
+# (bases/openbao/openbao.yaml header) and applies here unchanged.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  - ../../../applications/openbao
+  - ../../../bases/openbao
 
 components:
   - ../../../components/single-node
@@ -22,7 +22,7 @@ components:
 # their existing selectors and names here (a selector churn on a live
 # Deployment is an immutable-field conflict); includeTemplates:true still
 # stamps the POD TEMPLATE, which is what the Alloy env relabel consumes
-# (see applications/observability/alloy/config.alloy). Namespaces are the
+# (see bases/observability/alloy/config.alloy). Namespaces are the
 # ones only THIS plane syncs (secrets, db, search, observability,
 # external-secrets) — labeling them cannot start a two-owner drift fight.
 # NOTE: the shared APP namespaces (lumen, earendil, mellon — co-tenanted by

@@ -34,7 +34,7 @@ data:
       email:
         - uid: ops-email
           # dev@gofar.id rides the SAME consciously-bent exception class as the
-          # ACME contact in applications/certificates/issuer.yaml: a public
+          # ACME contact in bases/certificates/issuer.yaml: a public
           # operational mailbox (identifiable from LE account metadata anyway),
           # not a secret and not app runtime config. The alert routing itself
           # is config-as-code; only this address could ever want Bao.

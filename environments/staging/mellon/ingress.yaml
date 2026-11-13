@@ -4,7 +4,7 @@
 # and TLS are written for staging; nameSuffix rewrites only metadata.name.
 #
 # TLS: the explicit Certificate staging-console-gofar-id in
-# applications/certificates renders tls-console-staging — one auditable cert
+# bases/certificates renders tls-console-staging — one auditable cert
 # list for the whole estate; staging Ingresses merely consume its Secret. NO
 # cert-manager.io/cluster-issuer annotation ON PURPOSE: the ingress-shim
 # would double-issue a shadow Certificate for the SAME host against

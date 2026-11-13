@@ -8,7 +8,7 @@ spec:
   source:
     repoURL: 'https://github.com/kanatabi/vortex.git'
     targetRevision: HEAD
-    path: applications/lumen           # prod base; repoint at environments/production/lumen per §5.3
+    path: bases/lumen           # prod base; repoint at environments/production/lumen per §5.3
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: lumen

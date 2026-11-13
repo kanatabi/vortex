@@ -4,7 +4,7 @@
 # kv/data/earendil/production. Cluster SHAPE: the VPS is one node (owner
 # decision 2026-11-10) — the single-node component collapses the 2-replica
 # anti-affinity pair; TLS is real ACME (see
-# applications/certificates).
+# bases/certificates).
 #
 # NAMING CONTRACT: nameSuffix "-production" + labels omicron/env=production
 # (includeSelectors — env-restricted selectors are what make co-tenancy with
@@ -13,7 +13,7 @@
 # app-config-production (patched); the ES target AND the Ingress are
 # authored final in this overlay's own files. The Ingress TLS Secret stays
 # the UNSUFFIXED tls-gofar — the certificates app is foundation-plane
-# plumbing synced un-suffixed from applications/certificates; suffixed
+# plumbing synced un-suffixed from bases/certificates; suffixed
 # Ingress names do not imply suffixed certificate Secrets.
 #
 # VAULT-VALUE CONTRACT (seeding docs / runbook): kv/earendil/production
@@ -27,7 +27,7 @@ namespace: earendil
 nameSuffix: -production
 
 resources:
-- ../../../applications/earendil
+- ../../../bases/earendil
 - externalsecret.yaml
 - ingress.yaml
 
