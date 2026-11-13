@@ -1,22 +1,21 @@
-# PRODUCTION hub (single VPS), wave 2: backend. Its envFrom needs lumen-secrets
-# materialized by the store — Argo blocks the wave until the ClusterSecretStore
-# is Ready (seeded).
+# FOUNDATION hub (VPS entrypoint #1), wave 1: search engine, single replica (placement
+# collapsed by the component). Cluster-internal only — no ingress, ever (§2).
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: lumen
+  name: meilisearch
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   project: default
   source:
     repoURL: 'https://github.com/kanatabi/vortex.git'
     targetRevision: HEAD
-    path: overlays/production/lumen
+    path: overlays/production/meilisearch
   destination:
     server: 'https://kubernetes.default.svc'
-    namespace: lumen
+    namespace: search
   syncPolicy:
     automated:
       prune: true

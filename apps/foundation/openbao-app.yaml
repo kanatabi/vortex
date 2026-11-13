@@ -1,7 +1,9 @@
-# PRODUCTION hub (single VPS), wave 0: the vault itself. Healthy when the pod
-# runs; the kv stays EMPTY until the runbook init/unseal/AppRole/seed step —
-# and wave 2 will WAIT for that (see secrets-plane): the ordering is
-# structural, not a suggestion.
+# FOUNDATION hub (VPS entrypoint #1), wave 0: the vault itself. Healthy when
+# the pod runs; the kv stays EMPTY until the runbook M3 init/unseal/AppRole/
+# seed step — the `bao` store (wave 1) refuses Ready until that lands, and the
+# APPS hub is a manual apply that comes AFTER M3: the seed-before-apps order
+# is now structural across the two entrypoints, not a suggestion in one wave
+# list.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

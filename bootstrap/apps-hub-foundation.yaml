@@ -1,0 +1,44 @@
+# App-of-apps hub, PRODUCTION FOUNDATION entrypoint (#1 of two) — the values
+# and data plane: openbao, external-secrets, secrets-plane, lumen-db,
+# meilisearch. This is the VPS boot order made Git-visible:
+#   1. apply THIS hub (plus the always-manual platform/argocd install)
+#   2. waves inside it: OpenBao + ESO (wave 0) come up, then the `bao` store,
+#      lumen-db and meilisearch (wave 1). The store stays NOT-Ready until the
+#      vault is initialized and seeded — run runbook M3 (init/unseal/AppRole/
+#      seed) against it here, never after the apps hub.
+#   3. apply bootstrap/apps-hub-apps.yaml — the application plane
+# Chicken-and-egg, the documented manual exception (same class as apps-hub.yaml
+# and apps-hub-single-node.yaml, but now TWO manual applies — the two-hub split
+# is precisely what makes the seed-before-apps ordering structural across the
+# entrypoint, not just within one wave list). GitOps cannot bootstrap the
+# cluster that hosts its own root app.
+# Non-recursive sync of apps/foundation/ — the apps hub (path apps/applications/),
+# the 3-node hub (path apps/) and the single-node hub (path apps/single-node/)
+# never see these CRs, and vice versa: exactly one foundation+apps pair may
+# own a cluster.
+# Deltas vs the single-node REHEARSAL hub: source paths land on
+# overlays/production/* — Bao values from kv/{app}/production and REAL ACME
+# TLS via the certificates app (in the apps hub), never the selfsigned
+# component.
+#   scale-out later:  unchanged — drop overlays, repoint CRs at bases,
+#                     relabel node-pools (see bootstrap/apps-hub.yaml).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: platform-apps-hub-foundation
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/kanatabi/vortex.git'
+    targetRevision: HEAD
+    path: apps/foundation/
+    directory:
+      recurse: false
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

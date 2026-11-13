@@ -1,0 +1,35 @@
+# App-of-apps hub, PRODUCTION APPS entrypoint (#2 of two) — the application
+# plane: lumen, earendil, mellon, certificates, observability. Apply ONLY
+# after bootstrap/apps-hub-foundation.yaml is healthy AND the vault has been
+# seeded via runbook M3 — the store (`bao`, foundation wave 1) must be Ready
+# and the kv/{app}/production paths populated before anything here renders
+# env. That ordering is the whole point of the split: with one hub it lived
+# in sync-wave numbers; with two it lives in the entrypoint itself.
+# Waves restart per hub (this hub's own numbering):
+#   0 lumen (the dependency root — every app reads its API),
+#   1 earendil + mellon + certificates, 2 observability.
+# Chicken-and-egg, the documented manual exception (see
+# bootstrap/apps-hub-foundation.yaml for the full story — the two manual
+# applies ARE the exception pair).
+# Non-recursive sync of apps/applications/ — no other hub (apps/,
+# apps/foundation/, apps/single-node/) sees these CRs, and vice versa.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: platform-apps-hub-apps
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/kanatabi/vortex.git'
+    targetRevision: HEAD
+    path: apps/applications/
+    directory:
+      recurse: false
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

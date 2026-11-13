@@ -1,12 +1,14 @@
-# PRODUCTION hub (single VPS), wave 2: blog SSR (app-config ConfigMap rendered
-# from kv/earendil/production by the store; TLS from the certificates app).
+# APPS hub (VPS entrypoint #2), wave 1: blog SSR — reads lumen (wave 0)
+# through the cluster-internal DNS in app-config (rendered from
+# kv/earendil/production by the store; TLS from the certificates app, same
+# wave).
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: earendil
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   project: default
   source:

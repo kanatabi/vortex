@@ -1,0 +1,26 @@
+# APPS hub (VPS entrypoint #2), wave 0: backend — the dependency ROOT of this
+# hub; earendil + mellon (wave 1) reach it via cluster-internal DNS. Its
+# envFrom needs lumen-secrets materialized by the store — and the store is
+# Ready + seeded BEFORE this hub is applied at all (foundation hub, runbook
+# M3): the gate that used to be "wave 2 waits for the Ready store" is now the
+# two-hub entrypoint order itself.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: lumen
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/kanatabi/vortex.git'
+    targetRevision: HEAD
+    path: overlays/production/lumen
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: lumen
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
