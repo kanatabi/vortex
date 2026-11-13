@@ -1,0 +1,38 @@
+# console.gofar.id — the SECOND sanctioned public surface (INFRA §2 amendment
+# 2026-11-08). Go-live ordering is a hard rule: DNS resolves BEFORE first
+# issuance, TLS is real (the explicit Certificate console-gofar-id renders
+# tls-console), and GATE #10 (mellon/THREAT-NOTE final read + console
+# checklist) clears BEFORE the first login attempt from the world. lumen and
+# Bao stay private; the portal is their only doorway.
+#
+# AUTHORED FINAL in this overlay (env-model ingress retirement): the base
+# carries no Ingress anymore — hosts, backend and TLS are written for
+# production; nameSuffix rewrites only metadata.name. NO
+# cert-manager.io/cluster-issuer annotation ON PURPOSE: the ingress-shim
+# would auto-create a SHADOW Certificate (own Secret) for the same
+# hostnames — double issuance against Let's Encrypt rate limits; the
+# Secret-name match is the whole binding. The backend service name is
+# stated final per the naming contract (a rename of the Service without
+# its Ingress must fail review).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: mellon-web-server
+  namespace: mellon
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: console.gofar.id
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: mellon-web-server-production
+                port:
+                  name: http
+  tls:
+    - secretName: tls-console
+      hosts:
+        - console.gofar.id

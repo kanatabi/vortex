@@ -10,7 +10,7 @@
 # manifest edits.
 # Waves (this hub's numbering): 0 lumen-staging (dependency root), 1
 # earendil-staging + mellon-staging. TLS: the staging Certificates ride the
-# foundation-side certificates app (applications/certificates, synced by the
+# foundation-side certificates app (bases/certificates, synced by the
 # PRODUCTION hub) — an unserved staging door is inert, not broken.
 # Chicken-and-egg, the documented manual exception class (see
 # bootstrap/apps-hub-foundation.yaml).

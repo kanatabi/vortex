@@ -10,7 +10,11 @@ resources:
 - namespace.yaml
 - deployment.yaml
 - service.yaml
-- ingress.yaml
+# NO ingress HERE (env-model ingress retirement): public surfaces are env
+# decisions too — each environments/<env>/mellon overlay authors its own
+# ingress.yaml with hosts/backend/TLS stated final (nameSuffix rewrites
+# metadata.name only). The 3-node blueprint hub therefore renders no
+# Ingress — shape-only by design, like pins and ESO.
 # NO images: stanza HERE — the base is SHAPE, versions are ENV decisions
 # (Phase-11; fixture-proven kustomize v5.8.1 semantics: an inner base
 # transformation wins over every outer overlay re-statement, so a base pin

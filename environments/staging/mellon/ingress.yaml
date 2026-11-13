@@ -1,0 +1,34 @@
+# staging-console.gofar.id — the staging twin of surface #2 (console.gofar.id
+# itself is production-only). AUTHORED FINAL in this overlay (env-model
+# ingress retirement): the base carries no Ingress anymore — hosts, backend
+# and TLS are written for staging; nameSuffix rewrites only metadata.name.
+#
+# TLS: the explicit Certificate staging-console-gofar-id in
+# bases/certificates renders tls-console-staging — one auditable cert
+# list for the whole estate; staging Ingresses merely consume its Secret. NO
+# cert-manager.io/cluster-issuer annotation ON PURPOSE: the ingress-shim
+# would double-issue a shadow Certificate for the SAME host against
+# Let's Encrypt rate limits. The backend service name is stated final per
+# the naming contract (must equal the suffixed Service).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: mellon-web-server
+  namespace: mellon
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: staging-console.gofar.id
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: mellon-web-server-staging
+                port:
+                  name: http
+  tls:
+    - secretName: tls-console-staging
+      hosts:
+        - staging-console.gofar.id

@@ -1,0 +1,52 @@
+# gofar.id + www.gofar.id — surface #1, the blog itself. AUTHORED FINAL in
+# this overlay (env-model ingress retirement): the base carries no Ingress
+# anymore, so nothing is patched away — hosts, backend and TLS are written
+# for production; nameSuffix rewrites only metadata.name.
+#
+# TLS ownership lives in the certificates app: the explicit Certificate
+# gofar-id renders Secret tls-gofar — UNSUFFIXED on purpose (the
+# certificates app is foundation-plane plumbing synced from
+# bases/certificates; suffixed Ingress names do not imply suffixed
+# certificate Secrets). NO cert-manager.io/cluster-issuer annotation ON
+# PURPOSE: the ingress-shim would auto-create a SHADOW Certificate (own
+# name, own Secret) for the same hostnames — double issuance against
+# Let's Encrypt rate limits for one serving door. The Secret-name match is
+# the whole binding.
+#
+# The rules keep BOTH production hosts (www + apex — staging never wears
+# www, owner ruling); the backend service name is stated final per the
+# naming contract (a rename of the Service without its Ingress must fail
+# review, not silently route production at staging).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: earendil-web-server
+  namespace: earendil
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: www.gofar.id
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: earendil-web-server-production
+                port:
+                  name: http
+    - host: gofar.id
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: earendil-web-server-production
+                port:
+                  name: http
+  tls:
+    - secretName: tls-gofar
+      hosts:
+        - gofar.id
+        - www.gofar.id

@@ -20,8 +20,9 @@ namespace: mellon
 nameSuffix: -production
 
 resources:
-- ../../../applications/mellon
+- ../../../bases/mellon
 - externalsecret.yaml
+- ingress.yaml
 
 components:
 - ../../../components/single-node
@@ -42,10 +43,11 @@ images:
   # (environments/foundation/lumen; story in
   # environments/staging/lumen/kustomization.yaml).
 
-  # TLS ownership -> the certificates app (see environments/production/earendil
-  # for the full story, incl. WHY these are JSON6902 ops). Explicit
-  # Certificate console-gofar-id renders tls-console — UNSUFFIXED on purpose
-  # (foundation-plane cert app); the backend service name is stated final.
+  # TLS ownership -> the authored ingress.yaml (see that file for the full
+  # story incl. GATE #10). Explicit Certificate console-gofar-id renders
+  # tls-console — UNSUFFIXED on purpose (foundation-plane cert app);
+  # annotation-free so the ingress-shim can never double-issue; the backend
+  # service name is stated final.
 
   # envFrom -> the suffixed ConfigMap this overlay's ES renders.
 
@@ -58,31 +60,6 @@ patches:
     kind: Namespace
     metadata:
       name: mellon
-- patch: |-
-    - op: remove
-      path: /metadata/annotations/cert-manager.io~1cluster-issuer
-    - op: replace
-      path: /spec/rules
-      value:
-        - host: console.gofar.id
-          http:
-            paths:
-              - path: /
-                pathType: Prefix
-                backend:
-                  service:
-                    name: mellon-web-server-production
-                    port:
-                      name: http
-    - op: replace
-      path: /spec/tls
-      value:
-        - secretName: tls-console
-          hosts:
-            - console.gofar.id
-  target:
-    kind: Ingress
-    name: mellon-web-server
 - patch: |-
     - op: replace
       path: /spec/template/spec/containers/0/envFrom/0/configMapRef/name

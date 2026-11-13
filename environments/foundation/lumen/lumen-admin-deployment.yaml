@@ -1,7 +1,7 @@
 # lumen-admin — the estate's Control Plane, role=admin (foundation plane:
 # ONE admin for staging AND production; the cms fleets mutate content
 # through it, mellon relays to it in-cluster — NO ingress, §2).
-# Shape lifted from applications/lumen/http-server-deployment.yaml on
+# Shape lifted from bases/lumen/http-server-deployment.yaml on
 # purpose (same binary, same probes, same enableServiceLinks lesson):
 # 1 replica, no anti-affinity pair to collapse, NO worker (owner ruling:
 # admin needs no worker fleet).

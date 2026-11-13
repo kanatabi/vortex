@@ -13,6 +13,7 @@
 #
 # Same nameSuffix spec-field mechanics as environments/staging/earendil
 # (patches pre-suffix, references explicit, authored files final-named).
+# The Ingress is AUTHORED FINAL in this overlay's ingress.yaml — no patch.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
@@ -20,8 +21,9 @@ namespace: mellon
 nameSuffix: -staging
 
 resources:
-- ../../../applications/mellon
+- ../../../bases/mellon
 - externalsecret.yaml
+- ingress.yaml
 
 components:
 - ../../../components/single-node
@@ -44,12 +46,11 @@ images:
   # environments/foundation/lumen (see the full story in
   # environments/staging/lumen/kustomization.yaml).
 
-  # TLS ownership -> the staging Certificate staging-console-gofar-id in
-  # applications/certificates (renders tls-console-staging; one auditable
-  # cert list for the estate, synced by the production hub's certificates
-  # app); shim annotation off to avoid double
-  # issuance against the same host. Backend name stated EXPLICITLY per the
-  # naming contract (must equal the suffixed Service).
+  # TLS ownership -> the authored ingress.yaml (one auditable cert list:
+  # the explicit Certificate staging-console-gofar-id renders
+  # tls-console-staging; the Ingress consumes its Secret, annotation-free
+  # so the ingress-shim can never double-issue). Backend name stated FINAL
+  # per the naming contract (must equal the suffixed Service).
 
 
   # THE EPOCH TRIO — annotation == --declared == ES annotation ("0").
@@ -60,31 +61,6 @@ patches:
     kind: Namespace
     metadata:
       name: mellon
-- patch: |-
-    - op: remove
-      path: /metadata/annotations/cert-manager.io~1cluster-issuer
-    - op: replace
-      path: /spec/rules
-      value:
-        - host: staging-console.gofar.id
-          http:
-            paths:
-              - path: /
-                pathType: Prefix
-                backend:
-                  service:
-                    name: mellon-web-server-staging
-                    port:
-                      name: http
-    - op: replace
-      path: /spec/tls
-      value:
-        - secretName: tls-console-staging
-          hosts:
-            - staging-console.gofar.id
-  target:
-    kind: Ingress
-    name: mellon-web-server
 - patch: |-
     - op: replace
       path: /spec/template/spec/containers/0/envFrom/0/configMapRef/name

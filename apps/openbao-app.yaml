@@ -10,7 +10,7 @@ spec:
   source:
     repoURL: 'https://github.com/kanatabi/vortex.git'
     targetRevision: HEAD
-    path: applications/openbao
+    path: bases/openbao
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: secrets

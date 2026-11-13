@@ -16,7 +16,7 @@
 # DNS-01 works on every cluster, so staging certificates ride the SAME
 # ClusterIssuer (components/selfsigned retired with the rehearsal tree).
 # NOTE for the staging overlays: kustomize nameSuffix does NOT reach this
-# dir (the certificates app is synced un-suffixed from applications/);
+# dir (the certificates app is synced un-suffixed from bases/);
 # staging identity here lives in the object names + the suffixed Secret
 # names the staging Ingresses' tls blocks reference.
 apiVersion: cert-manager.io/v1

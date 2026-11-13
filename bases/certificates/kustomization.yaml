@@ -14,10 +14,12 @@
 #      visibly (Order pending), not silently.
 #
 # Why explicit Certificates instead of the per-Ingress cert-manager.io/
-# cluster-issuer annotation the bases carry: one auditable list of every cert
+# cluster-issuer annotation: one auditable list of every cert
 # the estate owns (SANs, secret names, rotation windows in a single review) —
-# and the prod overlays STRIP the annotation so the ingress-shim cannot
-# double-issue a shadow Certificate for the same names against LE rate limits.
+# and every env overlay authors its Ingress ANNOTATION-FREE (the bases carry
+# no Ingress at all since the env-model ingress retirement) so the
+# ingress-shim cannot double-issue a shadow Certificate for the same names
+# against LE rate limits.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 

@@ -8,7 +8,7 @@ spec:
   source:
     repoURL: 'https://github.com/kanatabi/vortex.git'
     targetRevision: HEAD
-    path: applications/observability
+    path: bases/observability
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: observability

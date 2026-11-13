@@ -35,7 +35,7 @@ namespace: lumen
 nameSuffix: -staging
 
 resources:
-- ../../../applications/lumen
+- ../../../bases/lumen
 - externalsecret.yaml
 
 components:
@@ -60,7 +60,7 @@ images:
   # `ns lumen` is a CO-TENANT object (staging + production workloads share
   # it): both env trees would render it with DIFFERENT omicron/env labels
   # and fight on every selfHeal pass. Ownership is therefore foundation-side
-  # (applications/*/namespace.yaml is deleted out of every env-tree build;
+  # (bases/*/namespace.yaml is deleted out of every env-tree build;
   # environments/foundation/lumen renders all three app namespaces
   # once, labeled omicron/env=shared — the truthful plane: shared plumbing).
   # $patch: delete runs before the labels transformer — so the Namespace
