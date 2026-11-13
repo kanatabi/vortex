@@ -45,7 +45,7 @@ patches:
         template:
           metadata:
             annotations:
-              omicron/config.epoch: "0"
+              omicron/config.epoch: "6"
   # Full-args replacement for the gate (never element-wise).
   - target:
       kind: Job
@@ -53,4 +53,4 @@ patches:
     patch: |-
       - op: replace
         path: /spec/template/spec/containers/0/args
-        value: ["config", "check-epoch", "--app", "lumen", "--env", "production", "--declared", "0"]
+        value: ["config", "check-epoch", "--app", "lumen", "--env", "production", "--declared", "6"]
