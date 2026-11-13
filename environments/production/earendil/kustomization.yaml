@@ -3,7 +3,7 @@
 # Env from OpenBao via ESO (architecture doc §5.3); Bao path
 # kv/data/earendil/production. Cluster SHAPE: the VPS is one node (owner
 # decision 2026-11-10) — the single-node component collapses the 2-replica
-# anti-affinity pair; selfsigned is NOT chained (real ACME TLS, see
+# anti-affinity pair; TLS is real ACME (see
 # applications/certificates).
 #
 # NAMING CONTRACT: nameSuffix "-production" + labels omicron/env=production

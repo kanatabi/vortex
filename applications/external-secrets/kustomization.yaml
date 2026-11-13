@@ -6,7 +6,8 @@
 # Consequences, all good: chart stays EXACT-pinned; the namespace is now a tracked
 # resource (the old manual `kubectl create ns external-secrets` bootstrap exception
 # DIES); placement lives in valuesInline here (prod shape) and is collapsed by
-# components/single-node in overlays/local — one doctrine for every workload.
+# components/single-node in every environments/* tree — one doctrine for
+# every workload.
 # Validation note: `kubectl kustomize --enable-helm` (helm on PATH) builds this dir.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization

@@ -44,7 +44,7 @@ spec:
               containerPort: 3000
           # ZERO config literals here (owner ruling 2026-11-11): every env value
           # arrives as app-config — ESO-rendered from Bao in every real environment
-          # (overlays/*/earendil/externalsecret.yaml). optional:true keeps the bare
+          # (environments/*/earendil/externalsecret.yaml). optional:true keeps the bare
           # k3d shape honest: no Bao -> the app's own runtime fallbacks answer
           # (API_BASE unset = dev default) instead of a ConfigMapError.
           envFrom:

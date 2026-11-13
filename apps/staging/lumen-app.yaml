@@ -1,0 +1,28 @@
+# STAGING hub (entrypoint), wave 0: the staging cms backend — the dependency
+# root of THIS hub; earendil + mellon staging (wave 1) reach it via the
+# suffixed cluster-internal DNS. Same cluster as production: names carry
+# "-staging" and selectors carry omicron/env=staging (environments/staging/
+# lumen). Its envFrom needs lumen-secrets-staging materialized by the store —
+# foundation hub + runbook M3 seed BEFORE either app hub is applied, and the
+# kv/lumen/staging path seeded too (this is the seeding-contract overlay:
+# the staged value MUST name the suffixed Service).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: lumen-staging
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/kanatabi/vortex.git'
+    targetRevision: HEAD
+    path: environments/staging/lumen
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: lumen
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

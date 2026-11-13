@@ -6,12 +6,13 @@
 # ahead of waves) but documents intent for plain kubectl apply readers.
 #
 # image: lumen — the ONE estate config checker, in every namespace, on
-# deliberately the SAME tag the lumen app itself runs. earendil/mellon
-# overlays resolve this name through an explicit `images:` stanza (see the
-# lockstep note in those overlays); overlays/production/lumen inherits the
-# mapping from its base applications/lumen. A gate that drifts from the app's
-# own image is a gate reading a stale epoch decoder — the bump tooling keeps
-# all three tag lines in one commit.
+# deliberately the SAME tag the lumen app itself runs. Every env-tree
+# overlay (environments/{staging,production}/*, environments/foundation/
+# lumen-admin) resolves this name through its own explicit `images:`
+# stanza (see the lockstep notes there — the base's mapping transforms
+# the base's pods, NOT the component Job that joins at overlay level). A
+# gate that drifts from the app's own image is a gate reading a stale
+# epoch decoder — the bump tooling keeps all lumen tag lines in one commit.
 #
 # args: OVERLAY-MUST-REPLACE (see component header) — the full array is
 # REPLACED per overlay, never patched element-wise, so --app/--declared and

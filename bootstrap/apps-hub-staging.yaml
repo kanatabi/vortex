@@ -1,0 +1,38 @@
+# App-of-apps hub, STAGING entrypoint — the staging application plane on the
+# SAME cluster as production (co-tenancy by naming contract: nameSuffix
+# "-staging" + omicron/env=staging selectors + suffixed vault-seeded service
+# DNS). Apply AFTER bootstrap/apps-hub-foundation.yaml is healthy, the vault
+# seeded (runbook M3 — including kv/{app}/staging and kv/lumen/shared for
+# the foundation lumen-admin), and — if production runs here too — after
+# bootstrap/apps-hub-production.yaml. Staging may equally own a dedicated
+# cluster: the trees are ENVIRONMENT files, not cluster files; moving
+# staging elsewhere = repointing THIS hub CR's destination server, zero
+# manifest edits.
+# Waves (this hub's numbering): 0 lumen-staging (dependency root), 1
+# earendil-staging + mellon-staging. TLS: the staging Certificates ride the
+# foundation-side certificates app (applications/certificates, synced by the
+# PRODUCTION hub) — an unserved staging door is inert, not broken.
+# Chicken-and-egg, the documented manual exception class (see
+# bootstrap/apps-hub-foundation.yaml).
+# NON-recursive sync of apps/staging/ — the foundation, production and
+# blueprint hubs never see these CRs, and vice versa.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: platform-apps-hub-staging
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/kanatabi/vortex.git'
+    targetRevision: HEAD
+    path: apps/staging/
+    directory:
+      recurse: false
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
