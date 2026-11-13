@@ -1,0 +1,8 @@
+# Dedicated SA for the gate Job — not the app's own: least privilege is the
+# whole read surface below, nothing else the pods can do.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: config-gate
+  labels:
+    app: config-gate

@@ -1,0 +1,23 @@
+# Component: config-gate — the config-epoch PreSync gate. Including an overlay
+# gets a Job (plus its RBAC) rendered INTO ITS OWN namespace: before each sync,
+# the lumen binary checks the app's declared config epoch against the epoch the
+# live pods were rolled with (`omicron/config.epoch` pod-template annotation —
+# `deployments get/list` is exactly the read this Role grants), and a FAILED
+# gate blocks the sync: the fleet keeps serving on the previous, coherent
+# config instead of booting half-migrated.
+# NO-OP BY DESIGN if included as-is: the Job's args still say
+# OVERLAY-MUST-REPLACE. Every including overlay MUST patch
+# /spec/template/spec/containers/0/args to its own `--app <name>` — and the
+# `--declared` value MUST equal the overlay's omicron/config.epoch annotation
+# verbatim (CI asserts the pair; the bump flow edits both lines in the same
+# commit). Resources carry no metadata.namespace on purpose — a component is
+# shape-agnostic, and each Application CR's destination.namespace places them
+# (lumen/earendil/mellon respectively).
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+
+resources:
+  - job.yaml
+  - sa.yaml
+  - role.yaml
+  - rolebinding.yaml

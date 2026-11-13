@@ -1,0 +1,48 @@
+# The gate Job proper. PreSync hook semantics (same lifecycle as lumen's
+# migrate Job — the sibling this gates): runs BEFORE the wave's resources
+# sync, must exit 0 or the sync is blocked; BeforeHookCreation deletes the
+# previous run so every sync re-gates fresh against the live deployments.
+# The sync-wave "-1" annotation is belt-and-braces only (hooks already run
+# ahead of waves) but documents intent for plain kubectl apply readers.
+#
+# image: lumen — the ONE estate config checker, in every namespace, on
+# deliberately the SAME tag the lumen app itself runs. earendil/mellon
+# overlays resolve this name through an explicit `images:` stanza (see the
+# lockstep note in those overlays); overlays/production/lumen inherits the
+# mapping from its base applications/lumen. A gate that drifts from the app's
+# own image is a gate reading a stale epoch decoder — the bump tooling keeps
+# all three tag lines in one commit.
+#
+# args: OVERLAY-MUST-REPLACE (see component header) — the full array is
+# REPLACED per overlay, never patched element-wise, so --app/--declared and
+# the pod-template epoch annotation cannot desync silently.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: config-gate
+  labels:
+    app: config-gate
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 3
+  activeDeadlineSeconds: 300
+  ttlSecondsAfterFinished: 600
+  template:
+    metadata:
+      labels:
+        app: config-gate
+    spec:
+      serviceAccountName: config-gate
+      restartPolicy: Never
+      enableServiceLinks: false   # estate doctrine: no kubelet service-env injection
+      containers:
+        - name: gate
+          image: lumen
+          imagePullPolicy: IfNotPresent
+          args: ["config", "check-epoch", "--app", "OVERLAY-MUST-REPLACE", "--env", "production", "--declared", "0"]
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 300m, memory: 128Mi }

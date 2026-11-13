@@ -1,0 +1,14 @@
+# The gate reads deployments in ITS OWN namespace only (namespaced Role +
+# RoleBinding, no ClusterRole anywhere): get/list is all check-epoch needs —
+# it compares the omicron/config.epoch pod-template annotation of the live
+# deployments against the --declared value baked in Git.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: config-gate
+  labels:
+    app: config-gate
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list"]
