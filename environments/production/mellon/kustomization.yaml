@@ -28,8 +28,8 @@ components:
   - ../../../components/config-gate
 
 # The config-gate Job runs the lumen binary — LOCKSTEP tag, see the note in
-# environments/production/earendil (bump tooling edits every lumen stanza in
-# ONE commit).
+# environments/production/earendil (the lumen-production bump edits every
+# `lumen` stanza under environments/production/* in ONE commit).
 images:
   - name: mellon
     newName: ghcr.io/kanatabi/mellon

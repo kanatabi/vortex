@@ -47,9 +47,11 @@ components:
   - ../../../components/single-node
   - ../../../components/config-gate
 
-# LOCKSTEP: bump tooling edits ghcr.io/kanatabi/lumen newTag HERE and in
-# every other lumen stanza (bases, environments/{staging,production}/*) in
-# ONE commit; the gate decodes epochs with the same image the fleet runs.
+# LOCKSTEP (SAME-ENV — foundation): the lumen-foundation bump edits the
+# `name: lumen` stanzas inside environments/foundation/* in ONE commit
+# (this dir is the only foundation tenant today; the bases pin NOTHING
+# since the convergence round — env trees are the only version homes).
+# The gate decodes epochs with the same image the admin fleet runs.
 images:
   - name: lumen
     newName: ghcr.io/kanatabi/lumen

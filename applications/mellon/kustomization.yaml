@@ -11,7 +11,9 @@ resources:
 - deployment.yaml
 - service.yaml
 - ingress.yaml
-images:
-- name: mellon
-  newName: ghcr.io/kanatabi/mellon
-  newTag: v1.1.0
+# NO images: stanza HERE — the base is SHAPE, versions are ENV decisions
+# (Phase-11; fixture-proven kustomize v5.8.1 semantics: an inner base
+# transformation wins over every outer overlay re-statement, so a base pin
+# would silently override the env trees and leak across envs). The env
+# overlays (environments/{staging,production}/mellon) are the ONLY pin
+# homes; base standalone keeps `image: mellon` as the honest placeholder.
