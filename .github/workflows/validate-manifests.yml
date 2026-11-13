@@ -21,6 +21,6 @@ jobs:
         with:
           fetch-depth: 0
       - name: anvil validate-manifests
-        uses: kanatabi/anvil/actions/validate-manifests@f7cba9afa5f0a98a6d5cce9b5701495fd226cd8e # ingress retirement: base kind rows 4→3
+        uses: kanatabi/anvil/actions/validate-manifests@9ed0738f738385bfa7ed96daa3f49c8e6e171451 # bases/ rename: table keys + glob follow
         with:
           base-ref: ${{ github.event.pull_request.base.sha || 'origin/main' }}
