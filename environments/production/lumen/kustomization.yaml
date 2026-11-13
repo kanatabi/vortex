@@ -47,7 +47,7 @@ components:
 images:
 - name: lumen
   newName: ghcr.io/kanatabi/lumen
-  newTag: v2.2.0
+  newTag: v3.0.0
 
   # `ns lumen` is a CO-TENANT object — deleted here; foundation-owned
   # (environments/foundation/lumen renders it; full story in
@@ -67,6 +67,7 @@ images:
   # byte-equal ("7" — carried across from the pre-tree lockstep bumps; the
   # bump flow edits all three lines in one commit, CI asserts equality).
       # Full-args replacement (never element-wise) — see component header.
+    # Full-args replacement (never element-wise) — see component header.
 patches:
 - patch: |-
     $patch: delete
