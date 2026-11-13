@@ -1,0 +1,28 @@
+# anor.gofar.id — the dashboard door (surface #2's sibling: authenticated via
+# Cloudflare Access OIDC + Grafana RBAC, so exposing the UI is a decision
+# already made, not a convenience). Deliberately NO cert-manager.io/
+# cluster-issuer annotation: the explicit Certificate anor-gofar-id
+# (applications/certificates) renders tls-anor, and the ingress-shim would
+# only shadow-issue a duplicate Certificate against the same hostnames.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana
+  namespace: observability
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: anor.gofar.id
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: grafana
+                port:
+                  name: http
+  tls:
+    - secretName: tls-anor
+      hosts:
+        - anor.gofar.id

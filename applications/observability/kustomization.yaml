@@ -9,3 +9,11 @@ resources:
   - loki.yaml
   - alloy
   - grafana.yaml
+  # Grafana's config feeds (kv/grafana/production via the `bao` store) + the
+  # anor.gofar.id door. NOTE for the ESO-free-bases doctrine (README): this dir
+  # is the one deliberate exception — observability has no dev/staging env axis,
+  # every hub that syncs it also syncs ESO + the store (waves 0/1), and the
+  # feeds are optional:true so a store without kv/grafana/production degrades
+  # to Grafana defaults, never a failed sync.
+  - externalsecret.yaml
+  - ingress.yaml

@@ -1,5 +1,6 @@
-# Grafana UI — the "G". Queried by mesh-only operators; NO public ingress
-# (access matrix §2: reach it via port-forward or a mesh-restricted route added later).
+# Grafana UI — the "G". Reached at anor.gofar.id (ingress.yaml): the door is
+# real now (feat/grafana-door), guarded by Cloudflare Access + generic-OAuth
+# OIDC and a Bao-rendered admin password — no more port-forward-only doctrine.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -41,6 +42,13 @@ spec:
   template:
     metadata:
       labels: { app: grafana }
+      # Observability contract (Phase 5): opt into Alloy's annotated-pods job.
+      # Grafana serves Prometheus /metrics on its http port — self-observability
+      # for the thing that watches everything else (dashboard-alert latency etc).
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "3000"
+        prometheus.io/path: "/metrics"
     spec:
       nodeSelector: { node-pool: edge }
       enableServiceLinks: false   # no legacy docker-style service env injection into app pods
@@ -48,14 +56,19 @@ spec:
         - name: grafana
           image: grafana/grafana:11.2.0
           ports: [{ containerPort: 3000, name: http }]
-          env:
-            # Seeded at bootstrap; eventually sourced via ExternalSecret (architecture §5)
-            - name: GF_SECURITY_ADMIN_USER
-              valueFrom: { secretKeyRef: { name: grafana-admin, key: user, optional: true } }
-            - name: GF_SECURITY_ADMIN_PASSWORD
-              valueFrom: { secretKeyRef: { name: grafana-admin, key: password, optional: true } }
-            - name: GF_ANALYTICS_REPORTING_ENABLED
-              value: "false"
+          # ZERO config literals (owner ruling 2026-11-11, grafana's share in
+          # this PR): the old env block — a secretKeyRef pair on the
+          # hand-seeded `grafana-admin` Secret plus the literal
+          # GF_ANALYTICS_REPORTING_ENABLED — is MOVED to envFrom, exactly the
+          # earendil/mellon pairing: grafana-config (ESO-rendered ConfigMap:
+          # constants + Bao-rooted GF_SERVER_ROOT_URL + OIDC enable flags) and
+          # grafana-secrets (ESO Secret: admin password + OAuth client
+          # id/secret). optional:true on both keeps the bare-k3d rehearsal
+          # honest: Grafana boots with its built-in default admin until the
+          # store renders, never a CrashLoop on a missing feed.
+          envFrom:
+            - configMapRef: { name: grafana-config, optional: true }
+            - secretRef: { name: grafana-secrets, optional: true }
           volumeMounts:
             - { name: datasources, mountPath: /etc/grafana/provisioning/datasources }
             - { name: data, mountPath: /var/lib/grafana }
