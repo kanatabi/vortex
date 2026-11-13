@@ -32,4 +32,8 @@ jobs:
       - name: guard + merge
         env:
           GH_TOKEN: ${{ github.token }}
+          # the variables API is OFF-LIMITS to GITHUB_TOKEN (403 by design,
+          # PR #8 proved it) — the vars context is the workflow's only door
+          # to the switch; absent variable = empty = off (fail-safe).
+          DEPLOY_AUTOMERGE: ${{ vars.DEPLOY_AUTOMERGE }}
         run: bash .anvil/bin/auto-merge.sh "${{ github.event.pull_request.number }}"
