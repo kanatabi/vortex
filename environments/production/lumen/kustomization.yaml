@@ -8,7 +8,7 @@
 # omicron/env=production selectors make production co-tenancy-safe with the
 # staging fleet in the shared namespaces; the Namespace object is deleted
 # from this build (foundation-owned, rendered by environments/foundation/
-# lumen-admin).
+# lumen — the admin overlay).
 #
 # VAULT-VALUE CONTRACT (seeding docs / runbook): production API_BASE values
 # (kv/earendil/production, kv/mellon/production) MUST name the suffixed
@@ -38,7 +38,7 @@ components:
 # migration Job is idempotent) resolves `image: lumen` in config-gate too.
 # LOCKSTEP: bump tooling edits ghcr.io/kanatabi/lumen newTag HERE, in
 # environments/production/earendil + environments/production/mellon +
-# environments/staging/* + environments/foundation/lumen-admin, and the
+# environments/staging/* + environments/foundation/lumen, and the
 # bases, in ONE commit — the gate must never decode epochs with an image
 # older than the app's.
 images:
@@ -48,7 +48,7 @@ images:
 
 patches:
   # `ns lumen` is a CO-TENANT object — deleted here; foundation-owned
-  # (environments/foundation/lumen-admin renders it; full story in
+  # (environments/foundation/lumen renders it; full story in
   # environments/staging/lumen/kustomization.yaml).
   - patch: |-
       $patch: delete
@@ -81,12 +81,12 @@ patches:
         path: /spec/template/spec/containers/0/envFrom/0/secretRef/name
         value: lumen-secrets-production
 
-  # CMS role (contract): the production fleet serves content and calls the
-  # foundation admin API (unsuffixed by contract — one admin for the estate).
-  # LUMEN_ADMIN_URL is deliberately inline like PORT; the LUMEN_MEILI_INDEX_*
-  # entries ride the ES (values from Bao). NOTE: the shape-check battery
-  # flags this inline URL — owner ruling keeps it structural, the contract
-  # string is what the vault seed docs and the sibling role-split agree on.
+  # CMS role (contract): deployment IDENTITY, deliberately inline (vault must
+  # never be able to silently re-role a fleet). LUMEN_ADMIN_URL is NOT inline
+  # — it is a config VALUE (service URL) and rides the ES (Bao) like every
+  # other in-cluster endpoint; the literal-ban battery stays strict
+  # (convergence ruling 2026-11-13: the exemption was NOT granted, the value
+  # moved — kv/lumen/shared property LUMEN_ADMIN_URL).
   - target:
       kind: Deployment
       name: lumen-http-server
@@ -96,8 +96,6 @@ patches:
         value:
           - name: LUMEN_ROLE
             value: cms
-          - name: LUMEN_ADMIN_URL
-            value: http://lumen-admin.lumen.svc.cluster.local
   - target:
       kind: Deployment
       name: lumen-worker
@@ -107,8 +105,6 @@ patches:
         value:
           - name: LUMEN_ROLE
             value: cms
-          - name: LUMEN_ADMIN_URL
-            value: http://lumen-admin.lumen.svc.cluster.local
 
   # THE EPOCH TRIO — annotation value == gate --declared == ES annotation,
   # byte-equal ("7" — carried across from the pre-tree lockstep bumps; the

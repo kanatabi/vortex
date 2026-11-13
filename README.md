@@ -64,10 +64,14 @@ repainting the destination in its hub CR (and seeding a vault there), with
   instance each; the Grafana door (`anor.gofar.id`) is production-owned DNS
   hosted by the foundation plane.
 
-**lumen-admin** (foundation): the estate's single Control Plane —
-Deployment `lumen-admin-http-server` (role=admin; no worker fleet by owner
-ruling), Service `lumen-admin` (unsuffixed — both cms trees hardcode
-`LUMEN_ADMIN_URL=http://lumen-admin.lumen.svc.cluster.local`), no ingress
+**lumen-admin** (foundation; overlay dir `environments/foundation/lumen` —
+dir name == app name so the bump tooling needs no name map, while every
+resource keeps its explicit `lumen-admin-*` name): the estate's single
+Control Plane — Deployment `lumen-admin-http-server` (role=admin; no worker
+fleet by owner ruling), Service `lumen-admin` (unsuffixed — the two cms
+trees reach it by SEEDED address, not hardcoded manifest: `kv/lumen/shared`
+property `LUMEN_ADMIN_URL` rendered through their ES, the naming contract
+guaranteeing the Service name), no ingress
 ever (§2: reached only via mellon's relay in-cluster), fed from
 `kv/lumen/shared`.
 
@@ -75,6 +79,18 @@ ever (§2: reached only via mellon's relay in-cluster), fed from
 `kv/lumen/staging|production` (cms), `kv/{app}/{env}` for earendil/mellon
 as before, `kv/grafana/production` + `kv/cert-manager/production` stay
 foundation-side singletons.
+
+**ES = the render contract.** Every ExternalSecret `data:` list mirrors
+what the deployed role actually binds — for lumen that truth is machine-
+readable (`lumen config keys --role admin|cms`, lumen ec16db5): the admin
+ES carries only `LUMEN_DB_URL` + `LUMEN_SESSION_JWT_SECRET` (the signing
+key has exactly ONE home), the cms ESes carry the content keys plus
+`LUMEN_ADMIN_URL` (source `lumen/shared` — a service URL is a VALUE;
+the `LUMEN_MEILI_URL` precedent) and never the JWT secret. `LUMEN_ROLE`
+stays inline on the pods: deployment IDENTITY, not configuration — vault
+must never be able to silently re-role a fleet. **Seeding order**: ESO
+fails the whole render on a missing property, so every key a contract
+names must exist in Bao BEFORE its hub syncs (the runbook orders this).
 
 ### Naming contract (the kustomize trap, handled per overlay)
 

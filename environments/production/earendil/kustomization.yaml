@@ -38,7 +38,7 @@ components:
 # the lumen binary — same tag the backend itself ships, deliberately.
 # LOCKSTEP: bump tooling edits ghcr.io/kanatabi/lumen newTag HERE, in
 # environments/production/lumen, environments/production/mellon,
-# environments/staging/*, environments/foundation/lumen-admin and the bases,
+# environments/staging/*, environments/foundation/lumen and the bases,
 # in ONE commit — a gate decoder older than the app's config epoch is how
 # drift starts.
 images:
@@ -62,7 +62,7 @@ images:
 # never wears www); the backend name is stated final per the naming contract.
 patches:
   # `ns earendil` is a CO-TENANT object — deleted here; foundation-owned
-  # (environments/foundation/lumen-admin; story in
+  # (environments/foundation/lumen; story in
   # environments/staging/lumen/kustomization.yaml).
   - patch: |-
       $patch: delete
