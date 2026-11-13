@@ -16,7 +16,7 @@ spec:
   source:
     repoURL: 'https://github.com/kanatabi/vortex.git'
     targetRevision: HEAD
-    path: overlays/production/lumen-db
+    path: environments/foundation/lumen-db
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: db

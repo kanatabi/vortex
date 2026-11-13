@@ -1,4 +1,4 @@
-# APPS hub (VPS entrypoint #2), wave 2: observability, AFTER the estate it
+# FOUNDATION hub (VPS entrypoint #1), wave 2: observability, AFTER the estate it
 # watches exists (grafana's config feeds consume the store — Ready long before
 # this hub is applied at all — and grafana degrades to defaults via
 # optional:true, never a blocked wave). The estate's only viewer:
@@ -16,7 +16,7 @@ spec:
   source:
     repoURL: 'https://github.com/kanatabi/vortex.git'
     targetRevision: HEAD
-    path: overlays/production/observability
+    path: environments/foundation/observability
   # ESO's webhook DEFAULTS these spec fields server-side (creationPolicy,
   # deletionPolicy, template engineVersion/mergePolicy) — they never exist in
   # Git, so without this the app is PERPETUALLY OutOfSync and selfHeal would

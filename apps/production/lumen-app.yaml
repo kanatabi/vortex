@@ -1,4 +1,4 @@
-# APPS hub (VPS entrypoint #2), wave 0: backend — the dependency ROOT of this
+# PRODUCTION hub (VPS entrypoint #2), wave 0: backend — the dependency ROOT of this
 # hub; earendil + mellon (wave 1) reach it via cluster-internal DNS. Its
 # envFrom needs lumen-secrets materialized by the store — and the store is
 # Ready + seeded BEFORE this hub is applied at all (foundation hub, runbook
@@ -16,7 +16,7 @@ spec:
   source:
     repoURL: 'https://github.com/kanatabi/vortex.git'
     targetRevision: HEAD
-    path: overlays/production/lumen
+    path: environments/production/lumen
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: lumen

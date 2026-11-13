@@ -1,0 +1,86 @@
+# lumen-admin — the Control Plane (FOUNDATION plane, no suffix, ns lumen).
+# Owner ruling: admin needs NO worker fleet — one Deployment, role=admin,
+# reached ONLY in-cluster: mellon relays to it through its same-origin proxy
+# (console.gofar.id is the human door; lumen-admin has NO ingress, ever —
+# §2 access matrix). Its Service keeps the contract name `lumen-admin`
+# (unsuffixed) because the cms fleets' LUMEN_ADMIN_URL hardcodes
+# http://lumen-admin.lumen.svc.cluster.local in BOTH env trees — one admin
+# for the estate, staging and production tenants write through it.
+#
+# Secrets: its own ES, target lumen-admin-secrets, from kv/lumen/shared —
+# DB_URL points at the Patroni logical database lumen_admin (owner
+# db_user_admin, generated Secret follows the operator's dotted naming,
+# lumen-pg.db_user_admin). The LUMEN_BAO_* trio stays the §5.6 k8s-manual
+# bootstrap family (lumen-bao-credentials, literal name shared in ns lumen —
+# bootstrap paradox, never an ES).
+#
+# CONTRACT FLAGS (role split lands in parallel in the lumen repo):
+# LUMEN_ROLE=admin and the LUMEN_MEILI_* keys below are the AGREED contract
+# names, NOT yet bindings on lumen main (main binds DB_URL/MEILI_URL/
+# MEILI_KEY/SESSION_JWT_SECRET + LUMEN_MEDIA_* — the keys this CR mirrors).
+# If the role-split PR renames anything, this CR and the cms overlays move
+# in lockstep with it.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# NO overlay-level `namespace:` stanza: this build renders THREE cluster-
+# scoped Namespaces (lumen/earendil/mellon) and the namespace transformer
+# would collapse their IDs. Every namespaced resource declares its own
+# metadata.namespace explicitly (the gate's component RBAC/Job are
+# ns-less by design — the Application CR's destination.namespace `lumen`
+# places them, exactly like every other overlay's config-gate).
+
+resources:
+  # Foundation-owned app namespaces: lumen/earendil/mellon are CO-TENANT
+  # objects (staging + production fleets live in them), so the env trees
+  # DELETE their copies ($patch: delete) and this single foundation overlay
+  # renders them once — before the app hubs apply, structurally.
+  - namespaces.yaml
+  - lumen-admin-deployment.yaml
+  - lumen-admin-service.yaml
+  - lumen-admin-migrate-job.yaml
+  - externalsecret.yaml
+
+components:
+  # VPS shape collapse (the admin Deployment's nodeAffinity no-ops away on
+  # one node) + the PreSync epoch gate, --env shared (foundation plane).
+  - ../../../components/single-node
+  - ../../../components/config-gate
+
+# LOCKSTEP: bump tooling edits ghcr.io/kanatabi/lumen newTag HERE and in
+# every other lumen stanza (bases, environments/{staging,production}/*) in
+# ONE commit; the gate decodes epochs with the same image the fleet runs.
+images:
+  - name: lumen
+    newName: ghcr.io/kanatabi/lumen
+    newTag: v2.2.0
+
+patches:
+  # THE EPOCH TRIO for the shared plane: pod annotation == gate --declared
+  # == ES annotation, byte-equal ("0" — admin boots at epoch 0).
+  - target:
+      kind: Deployment
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: unused
+      spec:
+        template:
+          metadata:
+            annotations:
+              omicron/config.epoch: "0"
+  - target:
+      kind: Job
+      name: config-gate
+    patch: |-
+      # Full-args replacement (never element-wise) — see component header.
+      - op: replace
+        path: /spec/template/spec/containers/0/args
+        value: ["config", "check-epoch", "--app", "lumen", "--env", "shared", "--declared", "0"]
+
+labels:
+  - pairs:
+      omicron/env: shared
+    includeSelectors: false
+    includeTemplates: true

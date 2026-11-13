@@ -1,0 +1,80 @@
+# lumen-admin — the estate's Control Plane, role=admin (foundation plane:
+# ONE admin for staging AND production; the cms fleets mutate content
+# through it, mellon relays to it in-cluster — NO ingress, §2).
+# Shape lifted from applications/lumen/http-server-deployment.yaml on
+# purpose (same binary, same probes, same enableServiceLinks lesson):
+# 1 replica, no anti-affinity pair to collapse, NO worker (owner ruling:
+# admin needs no worker fleet).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lumen-admin-http-server
+  namespace: lumen
+  labels:
+    app: lumen-admin-http-server
+    app.kubernetes.io/name: lumen
+    app.kubernetes.io/component: admin-http-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: lumen-admin-http-server
+  template:
+    metadata:
+      labels:
+        app: lumen-admin-http-server
+        app.kubernetes.io/name: lumen
+        app.kubernetes.io/component: admin-http-server
+      # Observability contract (architecture doc Phase 5): Alloy scrapes
+      # annotated pods; /metrics on the unrouted admin :9090.
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      affinity:
+        # Keep pods off the 2 GB master (node-pool=platform); the
+        # single-node component no-ops this away on the VPS today.
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-pool
+                    operator: NotIn
+                    values: ['platform']
+      enableServiceLinks: false   # estate doctrine (walk lesson 2026-11-10):
+      #                   kubelet service-links injected LUMEN_PORT=tcp://...
+      #                   and viper read it as the port.
+      containers:
+        - name: lumen-admin-http-server
+          image: lumen
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          # CONTRACT (role split lands in parallel in the lumen repo):
+          # LUMEN_ROLE selects the admin surface; LUMEN_MEILI_* / MEDIA
+          # arrive via lumen-admin-secrets (kv/lumen/shared — the ADMIN
+          # identity's single feed, read by both cms tenants' writes).
+          # The LUMEN_BAO_* trio stays the §5.6 k8s-manual family.
+          env:
+            - name: LUMEN_ROLE
+              value: admin
+          envFrom:
+            - secretRef:
+                name: lumen-admin-secrets
+                optional: true
+            - secretRef:
+                name: lumen-bao-credentials
+                optional: true
+          readinessProbe:
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 30
+            periodSeconds: 60
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 30
+            periodSeconds: 60
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 300m, memory: 256Mi }

@@ -47,9 +47,9 @@ images:
     newTag: v2.2.0
 
 patches:
-  # `ns earendil` is a CO-TENANT object — deleted here; rendered label-free
-  # exactly once by environments/foundation/lumen-admin (see the full story
-  # in environments/staging/lumen/kustomization.yaml).
+  # `ns earendil` is a CO-TENANT object — deleted here; rendered ONCE by
+  # environments/foundation/lumen-admin (see the full story in
+  # environments/staging/lumen/kustomization.yaml).
   - patch: |-
       $patch: delete
       apiVersion: v1

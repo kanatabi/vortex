@@ -27,7 +27,8 @@ components:
 # external-secrets) — labeling them cannot start a two-owner drift fight.
 # NOTE: the shared APP namespaces (lumen, earendil, mellon — co-tenanted by
 # staging and production) are foundation-owned in the lumen-admin overlay,
-# deliberately OUTSIDE any labels transformer, so they render unlabeled.
+# rendered ONCE there with the plane label (two env trees stamping the same
+# Namespace with different values is a selfHeal fight; one owner is not).
 labels:
   - pairs:
       omicron/env: shared

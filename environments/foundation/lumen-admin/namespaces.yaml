@@ -1,0 +1,26 @@
+# Co-tenant app namespaces, foundation-owned (feat/environments-production).
+# lumen/earendil/mellon host BOTH the staging and production fleets (the
+# naming contract separates workloads by nameSuffix + omicron/env selectors,
+# not by namespace) — so the Namespace objects may be rendered by exactly
+# ONE tree or selfHeal would stomp one owner's labels with the other's every
+# pass. That owner is this foundation overlay: it applies before both app
+# hubs (entrypoint order foundation -> seed -> staging|production), and the
+# env trees `$patch: delete` their copies out of their builds.
+#
+# This file deliberately carries NO omicron/env label literals: the
+# foundation labels transformer stamps `shared` here (the plane identity —
+# these namespaces are shared plumbing, which is exactly true).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: lumen
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: earendil
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mellon

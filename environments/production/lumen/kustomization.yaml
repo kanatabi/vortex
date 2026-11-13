@@ -1,0 +1,144 @@
+# Production view of lumen (environments tree — re-homed from
+# overlays/production/lumen, feat/environments-production).
+# NO deployment patch was needed under the old tree (the base's envFrom
+# matched the ES target literally); under the NAMING CONTRACT production
+# carries nameSuffix "-production" too — so every name-bearing reference is
+# now explicit, exactly the trap the contract calls out. Same mechanics as
+# environments/staging/lumen (read that header first): suffixed names +
+# omicron/env=production selectors make production co-tenancy-safe with the
+# staging fleet in the shared namespaces; the Namespace object is deleted
+# from this build (foundation-owned, rendered by environments/foundation/
+# lumen-admin).
+#
+# VAULT-VALUE CONTRACT (seeding docs / runbook): production API_BASE values
+# (kv/earendil/production, kv/mellon/production) MUST name the suffixed
+# backend — http://lumen-http-server-production.lumen.svc.cluster.local —
+# because this build renames the Service. Old unsuffixed vault values point
+# at nothing after this cutover; reseed with the bump.
+#
+# Bao paths: kv/{app}/{env}. Patches target PRE-suffix names (patches run
+# before suffix — verified on kustomize v5.8.1).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: lumen
+nameSuffix: -production
+
+resources:
+  - ../../../applications/lumen
+  - externalsecret.yaml
+
+components:
+  - ../../../components/single-node
+  - ../../../components/config-gate
+
+# The base's images stanza transformed the base's pods — NOT the component's
+# gate Job, which joins at THIS level. Re-stating the mapping (same values:
+# kustomize matches through the base's carried-over name annotation, so the
+# migration Job is idempotent) resolves `image: lumen` in config-gate too.
+# LOCKSTEP: bump tooling edits ghcr.io/kanatabi/lumen newTag HERE, in
+# environments/production/earendil + environments/production/mellon +
+# environments/staging/* + environments/foundation/lumen-admin, and the
+# bases, in ONE commit — the gate must never decode epochs with an image
+# older than the app's.
+images:
+  - name: lumen
+    newName: ghcr.io/kanatabi/lumen
+    newTag: v2.2.0
+
+patches:
+  # `ns lumen` is a CO-TENANT object — deleted here; foundation-owned
+  # (environments/foundation/lumen-admin renders it; full story in
+  # environments/staging/lumen/kustomization.yaml).
+  - patch: |-
+      $patch: delete
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: lumen
+
+  # envFrom -> the suffixed Secret this overlay's ES materializes (ES
+  # target.name is authored final in externalsecret.yaml).
+  - target:
+      kind: Deployment
+      name: lumen-http-server
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/envFrom/0/secretRef/name
+        value: lumen-secrets-production
+  - target:
+      kind: Deployment
+      name: lumen-worker
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/envFrom/0/secretRef/name
+        value: lumen-secrets-production
+  - target:
+      kind: Job
+      name: lumen-migrate
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/envFrom/0/secretRef/name
+        value: lumen-secrets-production
+
+  # CMS role (contract): the production fleet serves content and calls the
+  # foundation admin API (unsuffixed by contract — one admin for the estate).
+  # LUMEN_ADMIN_URL is deliberately inline like PORT; the LUMEN_MEILI_INDEX_*
+  # entries ride the ES (values from Bao). NOTE: the shape-check battery
+  # flags this inline URL — owner ruling keeps it structural, the contract
+  # string is what the vault seed docs and the sibling role-split agree on.
+  - target:
+      kind: Deployment
+      name: lumen-http-server
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/env
+        value:
+          - name: LUMEN_ROLE
+            value: cms
+          - name: LUMEN_ADMIN_URL
+            value: http://lumen-admin.lumen.svc.cluster.local
+  - target:
+      kind: Deployment
+      name: lumen-worker
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/env
+        value:
+          - name: LUMEN_ROLE
+            value: cms
+          - name: LUMEN_ADMIN_URL
+            value: http://lumen-admin.lumen.svc.cluster.local
+
+  # THE EPOCH TRIO — annotation value == gate --declared == ES annotation,
+  # byte-equal ("7" — carried across from the pre-tree lockstep bumps; the
+  # bump flow edits all three lines in one commit, CI asserts equality).
+  - target:
+      kind: Deployment
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: unused
+      spec:
+        template:
+          metadata:
+            annotations:
+              omicron/config.epoch: "7"
+  - target:
+      kind: Job
+      name: config-gate
+    patch: |-
+      # Full-args replacement (never element-wise) — see component header.
+      - op: replace
+        path: /spec/template/spec/containers/0/args
+        value: ["config", "check-epoch", "--app", "lumen", "--env", "production", "--declared", "7"]
+
+labels:
+  - pairs:
+      omicron/env: production
+    # selectors participate — co-tenancy with staging in ONE namespace only
+    # holds if every production selector is env-restricted (and the suffixed
+    # names mean this fleet rolls out as NEW objects; the unsuffixed
+    # pre-contract objects prune in the same sync).
+    includeSelectors: true

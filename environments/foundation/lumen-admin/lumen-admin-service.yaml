@@ -1,0 +1,22 @@
+# Service lumen-admin — the contract name for the cms fleets'
+# LUMEN_ADMIN_URL (http://lumen-admin.lumen.svc.cluster.local, BOTH env
+# trees) and for mellon's in-cluster relay. UNSUFFIXED by naming contract
+# (foundation plane); ClusterIP-only, no ingress, ever (§2: the Control
+# Plane is reached only through the portal relay inside the cluster).
+apiVersion: v1
+kind: Service
+metadata:
+  name: lumen-admin
+  namespace: lumen
+  labels:
+    app: lumen-admin
+    app.kubernetes.io/name: lumen
+    app.kubernetes.io/component: admin
+spec:
+  type: ClusterIP
+  selector:
+    app: lumen-admin-http-server
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
