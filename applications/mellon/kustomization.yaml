@@ -14,4 +14,4 @@ resources:
 images:
 - name: mellon
   newName: ghcr.io/kanatabi/mellon
-  newTag: v1.0.1
+  newTag: v1.1.0
