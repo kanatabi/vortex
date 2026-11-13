@@ -13,3 +13,20 @@ resources:
 # via the certificates app (console.gofar.id is surface #2, TLS is mandatory).
 components:
   - ../../../components/single-node
+
+# TLS ownership -> the certificates app (see overlays/production/earendil for
+# the full story, incl. WHY these are JSON6902 ops): explicit Certificate
+# renders tls-console; the shadow-issuing ingress-shim annotation comes off.
+patches:
+  - target:
+      kind: Ingress
+      name: mellon-web-server
+    patch: |-
+      - op: remove
+        path: /metadata/annotations/cert-manager.io~1cluster-issuer
+      - op: replace
+        path: /spec/tls
+        value:
+          - secretName: tls-console
+            hosts:
+              - console.gofar.id

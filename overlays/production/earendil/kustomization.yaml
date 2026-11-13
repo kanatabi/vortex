@@ -13,3 +13,31 @@ resources:
 
 components:
   - ../../../components/single-node
+
+# TLS ownership moves to the certificates app here (PR feat/certificates-app):
+# the explicit Certificate gofar-id renders Secret tls-gofar; the base's
+# cert-manager.io/cluster-issuer annotation would make the ingress-shim
+# auto-create a SHADOW Certificate (own name, own Secret) for the same
+# hostnames — double issuance against Let's Encrypt rate limits for one
+# serving door. So the prod overlay REMOVES the annotation (JSON6902, not a
+# strategic-merge null: typed map[string]string merges COERCE null to the
+# literal string "null" — the selfsigned component carries that quirk
+# invisibly, harmless only because rehearsal clusters have no cert-manager
+# to read it) and re-points spec.tls at tls-gofar (annotation gone => shim
+# ignores the Ingress entirely; the Secret name match is the whole binding).
+# Local rehearsal strips tls via components/selfsigned instead; the base
+# keeps the annotation-only shape for the 3-node blueprint.
+patches:
+  - target:
+      kind: Ingress
+      name: earendil-web-server
+    patch: |-
+      - op: remove
+        path: /metadata/annotations/cert-manager.io~1cluster-issuer
+      - op: replace
+        path: /spec/tls
+        value:
+          - secretName: tls-gofar
+            hosts:
+              - gofar.id
+              - www.gofar.id

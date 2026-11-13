@@ -1,0 +1,42 @@
+# PRODUCTION hub, wave 2: TLS — arrives with the apps, never after them.
+# Placement judgment: the brief says "after the store is ready, one step
+# earlier than the apps". The waves the single-node CRs encode leave no empty
+# step between those two constraints (store plane = wave 1, apps = wave 2),
+# so certificates joins wave 2: the EARLIEST wave that is structurally gated
+# on the Ready `bao` store (its cf-token feed is a store consumer — same gate
+# as every app-config), while the apps gain no dependency on it (an Ingress
+# missing its tls Secret is merely not-yet-terminating; Traefik picks the
+# cert up the moment issuance lands). A wave "1" would race the very store
+# it reads from; wave "3" would needlessly delay TLS behind every app.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: certificates
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/kanatabi/vortex.git'
+    targetRevision: HEAD
+    path: applications/certificates
+  # ESO's webhook DEFAULTS these spec fields server-side (creationPolicy,
+  # deletionPolicy, template engineVersion/mergePolicy) — they never exist in
+  # Git, so without this the app is PERPETUALLY OutOfSync and selfHeal would
+  # thrash the ES forever. Discovered on the live walk 2026-11-10.
+  ignoreDifferences:
+    - group: external-secrets.io
+      kind: ExternalSecret
+      jqPathExpressions:
+        - .spec.target.creationPolicy
+        - .spec.target.deletionPolicy
+        - .spec.target.template.engineVersion
+        - .spec.target.template.mergePolicy
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: cert-manager
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

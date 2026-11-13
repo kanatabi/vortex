@@ -1,0 +1,59 @@
+# The three public certificates of the estate. Each lives in the namespace of
+# the workload whose Ingress consumes it (cert-manager namespaced Secret ->
+# same-namespace Ingress tls.secretName). LE rotation windows: 90d issued /
+# renew at 60d (renewBefore 30d) — standard, generous for a blog-scale ACME
+# account. The cert expiry <21d alert (observability) is the safety net if
+# renewal ever silently stops.
+#
+# Surface map (INFRA §2 amendment 2026-11-08 — these are ALL the doors):
+#   gofar.id + www  -> earendil   (surface #1, content)
+#   console         -> mellon     (surface #2, admin portal)
+#   anor            -> grafana    (dashboard door, PR feat/grafana-door)
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: gofar-id
+  namespace: earendil
+spec:
+  secretName: tls-gofar
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  commonName: gofar.id
+  dnsNames:
+    - gofar.id
+    - www.gofar.id
+  duration: 2160h0m0s      # 90d
+  renewBefore: 720h0m0s    # 30d
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: console-gofar-id
+  namespace: mellon
+spec:
+  secretName: tls-console
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  commonName: console.gofar.id
+  dnsNames:
+    - console.gofar.id
+  duration: 2160h0m0s      # 90d
+  renewBefore: 720h0m0s    # 30d
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: anor-gofar-id
+  namespace: observability
+spec:
+  secretName: tls-anor
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  commonName: anor.gofar.id
+  dnsNames:
+    - anor.gofar.id
+  duration: 2160h0m0s      # 90d
+  renewBefore: 720h0m0s    # 30d

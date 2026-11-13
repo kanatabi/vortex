@@ -1,0 +1,27 @@
+# certificates — the estate's TLS source of truth (INFRA §5, runbook M3).
+# Everything ACME lives here: the Cloudflare DNS token feed, the ClusterIssuer,
+# and the three Certificates backing the public surfaces + the dashboard door.
+#
+# PREREQS — both are documented manual bootstrap exceptions the runbook owns,
+# NOT objects this dir (or any hub) manages:
+#   1. cert-manager EXISTS in-cluster: installed once via a PINNED
+#        kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.16.2/cert-manager.yaml
+#      — the same class of exception as Argo CD itself and the Zalando
+#      operator. The cert-manager Namespace ships with that install; we
+#      deliberately do not track it here.
+#   2. kv/cert-manager/production is SEEDED with CF_API_TOKEN (runbook M3).
+#      Until then the cf-token Secret stays unrendered and issuance stalls —
+#      visibly (Order pending), not silently.
+#
+# Why explicit Certificates instead of the per-Ingress cert-manager.io/
+# cluster-issuer annotation the bases carry: one auditable list of every cert
+# the estate owns (SANs, secret names, rotation windows in a single review) —
+# and the prod overlays STRIP the annotation so the ingress-shim cannot
+# double-issue a shadow Certificate for the same names against LE rate limits.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - externalsecret.yaml
+  - issuer.yaml
+  - certificates.yaml
