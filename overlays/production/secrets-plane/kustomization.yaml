@@ -1,0 +1,13 @@
+# Production (single VPS) view of the secrets plane: the `bao` ClusterSecretStore
+# as-is. Its Ready condition gates wave 2 in every 1-node hub — the seed-before-
+# apps order stays structural, not a suggestion. The single-node component is
+# kept for chain uniformity (no pod shapes live in this dir today, so the patch
+# targets no-op — future workloads here inherit the VPS shape automatically).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../../applications/secrets-plane
+
+components:
+  - ../../../components/single-node

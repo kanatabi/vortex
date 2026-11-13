@@ -8,3 +8,8 @@ kind: Kustomization
 resources:
   - ../../../applications/mellon
   - externalsecret.yaml
+
+# Single-node VPS shape (owner decision 2026-11-10). No selfsigned — real TLS
+# via the certificates app (console.gofar.id is surface #2, TLS is mandatory).
+components:
+  - ../../../components/single-node

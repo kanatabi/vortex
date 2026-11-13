@@ -1,0 +1,22 @@
+# PRODUCTION hub (single VPS), wave 1: search engine, single replica (placement
+# collapsed by the component). Cluster-internal only — no ingress, ever (§2).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: meilisearch
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/kanatabi/vortex.git'
+    targetRevision: HEAD
+    path: overlays/production/meilisearch
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: search
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

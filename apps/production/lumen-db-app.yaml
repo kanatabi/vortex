@@ -1,0 +1,26 @@
+# PRODUCTION hub (single VPS), wave 1: Zalando V1Postgresql CR,
+# numberOfInstances collapsed 2->1 by the component. Operator itself is a MANUAL
+# prereq (runbook): pinned apply. selfHeal stays ON here (matching the
+# single-node doctrine, apps/single-node/lumen-db-app.yaml): with ONE instance
+# there is no hand-executed failover for Git to stomp — the 3-node exception
+# (apps/lumen-db-app.yaml, selfHeal:false) protects a topology this shape lacks.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: lumen-db
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/kanatabi/vortex.git'
+    targetRevision: HEAD
+    path: overlays/production/lumen-db
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: db
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
