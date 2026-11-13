@@ -1,22 +1,20 @@
-# PRODUCTION hub (single VPS), wave 2: observability, with the apps (the brief
-# puts it "in the apps wave" — wave 2 is also the first wave gated on the Ready
-# `bao` store, which grafana's config feeds consume; grafana degrades to
-# defaults via optional:true, never a blocked wave). The estate's only viewer:
-# Alloy (DaemonSet) + Loki + VictoriaMetrics + Grafana at anor.gofar.id, sized
-# to the §1 VPS budget, alerting via the provisioned five rules (PR history).
+# APPS hub (VPS entrypoint #2), wave 1: admin portal (console.gofar.id; reads
+# lumen (wave 0); real ACME TLS via the certificates app, same wave — go-live
+# ordering in the base ingress header still binds: DNS first, real cert,
+# GATE #10 before the first login).
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: observability
+  name: mellon
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   project: default
   source:
     repoURL: 'https://github.com/kanatabi/vortex.git'
     targetRevision: HEAD
-    path: overlays/production/observability
+    path: overlays/production/mellon
   # ESO's webhook DEFAULTS these spec fields server-side (creationPolicy,
   # deletionPolicy, template engineVersion/mergePolicy) — they never exist in
   # Git, so without this the app is PERPETUALLY OutOfSync and selfHeal would
@@ -31,7 +29,7 @@ spec:
         - .spec.target.template.mergePolicy
   destination:
     server: 'https://kubernetes.default.svc'
-    namespace: observability
+    namespace: mellon
   syncPolicy:
     automated:
       prune: true

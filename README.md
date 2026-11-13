@@ -27,9 +27,14 @@ For running the whole stack locally with k3d, see
 ```text
 .
 ├── bootstrap/
-│   ├── apps-hub.yaml          # root Application (3-node shape) — apply manually
-│   └── apps-hub-single-node.yaml # the 1-node variant (local rehearsal + 1-VPS prod)
-├── apps/                      # Application CRs ONLY (one per deployed app)
+│   ├── apps-hub.yaml               # root Application (3-node shape) — apply manually
+│   ├── apps-hub-single-node.yaml   # the 1-node variant (local rehearsal + 1-VPS prod)
+│   ├── apps-hub-foundation.yaml    # VPS prod entrypoint #1 of 2 (manual) — syncs apps/foundation/
+│   └── apps-hub-apps.yaml          # VPS prod entrypoint #2 of 2 (manual) — syncs apps/applications/
+├── apps/                      # Application CRs ONLY (one per deployed app) —
+│   │                          # apps/ itself = the 3-node hub's flat set; every hub syncs
+│   │                          # its own folder NON-recursively, so the shapes never see
+│   │                          # each other's CRs — exactly one hub (or hub PAIR) owns a cluster
 │   ├── earendil-app.yaml # SvelteKit SSR site   (source repo: earendil)
 │   ├── lumen-app.yaml  # Go API               (source repo: lumen — cluster-internal, no ingress)
 │   ├── lumen-db-app.yaml       # Patroni PostgreSQL   (selfHeal: false — DB guard)
@@ -38,9 +43,12 @@ For running the whole stack locally with k3d, see
 │   ├── openbao-app.yaml       # the values store itself (§5)
 │   ├── mellon-app.yaml   # admin portal           (console.gofar.id — surface #2)
 │   ├── external-secrets-app.yaml # ESO, as an OCI Helm chart — the one non-git Application
-│   └── secrets-plane-app.yaml # ClusterSecretStore `bao` (wave 1: after ESO+OpenBao)
-├── apps/single-node/          # twin CR set for 1-node clusters (hub-single syncs this;
-│                              # the prod hub syncs apps/ NON-recursively and never sees them)
+│   ├── secrets-plane-app.yaml # ClusterSecretStore `bao` (wave 1: after ESO+OpenBao)
+│   ├── single-node/           # twin CR set for 1-node clusters (hub-single syncs this)
+│   ├── foundation/            # VPS prod CRs, FOUNDATION hub (openbao, external-secrets,
+│   │                          # secrets-plane, lumen-db, meilisearch — waves 0/0/1/1/1)
+│   └── applications/          # VPS prod CRs, APPS hub (lumen wave 0, earendil/mellon/
+│                              # certificates wave 1, observability wave 2)
 ├── applications/              # raw manifests, one kustomize dir per app
 │   ├── earendil/
 │   ├── mellon/
@@ -124,9 +132,40 @@ kubectl apply -k platform/argocd/
 # 2. one-time namespace for the ESO chart app (charts don't self-create it)
 kubectl create namespace external-secrets
 # 3. App-of-apps hub — repoURLs are real (kanatabi/vortex), apply directly
-#    (single node? apply bootstrap/apps-hub-single-node.yaml INSTEAD — never both)
+#    (single node? apply bootstrap/apps-hub-single-node.yaml INSTEAD — never both;
+#     production VPS? skip both of these — see "Production VPS entrypoint" below)
 kubectl apply -f bootstrap/apps-hub.yaml
 ```
+
+## Production VPS entrypoint — TWO hubs (feat/hub-split)
+
+The live single-VPS estate is bootstrapped by a hub PAIR, both manual applies
+(the documented chicken-and-egg exception, same class as every other hub:
+GitOps cannot bootstrap the cluster hosting its own root app). Two applies is
+the entire manual surface, and their ORDER is the seed-before-apps invariant
+made structural:
+
+```bash
+# 0. Argo CD itself: kubectl apply -k platform/argocd/
+kubectl apply -f bootstrap/apps-hub-foundation.yaml   # #1: values+data plane
+# wait for foundation waves (openbao + external-secrets = 0, secrets-plane +
+# lumen-db + meilisearch = 1), then run runbook M3 — Bao init/unseal/AppRole
+# and the kv/{app}/production seeds. The `bao` ClusterSecretStore stays
+# NOT-Ready until M3 lands; do not proceed before it is Ready.
+kubectl apply -f bootstrap/apps-hub-apps.yaml         # #2: application plane
+```
+
+Sync waves restart per hub (they are only comparable inside one Application
+tree): foundation = openbao 0, external-secrets 0, secrets-plane 1, lumen-db 1,
+meilisearch 1; applications = lumen 0 (dependency root), earendil 1, mellon 1
+(both read lumen), certificates 1, observability 2. The CRs live in
+`apps/foundation/` and `apps/applications/` — both synced NON-recursively, so
+the 3-node hub (`apps/`) and the single-node hub (`apps/single-node/`) never
+see them, and vice versa: exactly one hub (or pair) may own a cluster. The old
+combined `bootstrap/apps-hub-production.yaml` + `apps/production/` are retired.
+Adding a prod app = a CR in the folder its hub syncs; changing which plane an
+app belongs to = `git mv` between the two folders.
+
 
 ## Single-node clusters (local minikube / one VPS)
 

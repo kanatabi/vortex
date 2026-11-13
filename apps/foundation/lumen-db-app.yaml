@@ -1,4 +1,4 @@
-# PRODUCTION hub (single VPS), wave 1: Zalando V1Postgresql CR,
+# FOUNDATION hub (VPS entrypoint #1), wave 1: Zalando V1Postgresql CR,
 # numberOfInstances collapsed 2->1 by the component. Operator itself is a MANUAL
 # prereq (runbook): pinned apply. selfHeal stays ON here (matching the
 # single-node doctrine, apps/single-node/lumen-db-app.yaml): with ONE instance
