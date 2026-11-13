@@ -97,9 +97,10 @@ names must exist in Bao BEFORE its hub syncs (the runbook orders this).
 `nameSuffix` rewrites `metadata.name` **only**. Every name-bearing spec
 reference is therefore made explicit — either AUTHORED final in files the
 overlay owns (ES `spec.target.name` = `lumen-secrets-staging`,
-`app-config-production`, …) or JSON6902-patched (base-file references:
-deployments' `envFrom` secretRef/configMapRef, migrate Job envFrom, Ingress
-backends stated final). The `bao` store, issuerRef and the
+`app-config-production`, and each env overlay's `ingress.yaml` — hosts,
+backend service name and TLS secret stated final) or JSON6902-patched
+(base-file references: deployments' `envFrom` secretRef/configMapRef,
+migrate Job envFrom). The `bao` store, issuerRef and the
 `lumen-bao-credentials` bootstrap family stay literal everywhere — they are
 single-instance or Git-unmanaged. **Vault values must name the suffixed
 Services** (seeding contract): production earendil/mellon `API_BASE` →
@@ -196,7 +197,9 @@ other's CRs. Adding an app = a CR in the folder its hub syncs + an
 hub edit.
 
 `bootstrap/apps-hub.yaml` (flat `apps/`) is the 3-node BLUEPRINT entrypoint
-for the future scale-out: it syncs the raw bases (no ESO render chain). The
+for the future scale-out: it syncs the raw bases (no ESO render chain, and —
+since the env-model ingress retirement — no Ingress either: public surfaces
+are env decisions, authored per overlay). The
 old single-node rehearsal hubs (`apps-hub-single-node.yaml`,
 `apps/single-node/`) are retired — their walk history is preserved in the
 archived workspace `RUNBOOK.md` and in git log.
@@ -267,7 +270,9 @@ commit and syncs (`prune + selfHeal` by default).
    ns is single-owner], workloads, ingress).
 2. Create `environments/<env>/<name>/` overlays per env you want (copy the
    staging/production twin — remember the spec-field patch list: envFrom,
-   ingress backends, ES target names) and an `apps/<env>/<name>-app.yaml`
+   ES target names — and author your own `ingress.yaml` with hosts/backend/
+   TLS stated final, per the naming contract) and an
+   `apps/<env>/<name>-app.yaml`
    CR with the right suffix/wave/`destination.namespace`.
 3. Wire the source repo's deploy workflow to point at the base AND the env
    overlay stanzas it must keep in lockstep.
