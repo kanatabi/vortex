@@ -21,6 +21,6 @@ jobs:
         with:
           fetch-depth: 0
       - name: anvil validate-manifests
-        uses: kanatabi/anvil/actions/validate-manifests@cc194ea31428527d58bd1812055e672669f6e13e # v4 production-shape table
+        uses: kanatabi/anvil/actions/validate-manifests@bdf7a8941214251f9c0b0e6dba1a2bf637bb43ca # v5 structural assertions + epoch table
         with:
           base-ref: ${{ github.event.pull_request.base.sha || 'origin/main' }}
