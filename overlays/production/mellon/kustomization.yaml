@@ -24,7 +24,7 @@ components:
 images:
   - name: lumen
     newName: ghcr.io/kanatabi/lumen
-    newTag: v2.0.0
+    newTag: v2.2.0
 
 # TLS ownership -> the certificates app (see overlays/production/earendil for
 # the full story, incl. WHY these are JSON6902 ops): explicit Certificate

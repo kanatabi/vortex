@@ -26,7 +26,7 @@ components:
 images:
   - name: lumen
     newName: ghcr.io/kanatabi/lumen
-    newTag: v2.0.0
+    newTag: v2.2.0
 
 # THE EPOCH PAIR — both lines below must stay byte-equal on --declared ("0"),
 # the bump flow edits annotation + args in ONE commit (CI asserts equality).
