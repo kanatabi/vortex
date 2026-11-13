@@ -32,15 +32,18 @@ components:
   - ../../../components/single-node
   - ../../../components/config-gate
 
-# The base's images stanza transformed the base's pods — NOT the component's
-# gate Job, which joins at THIS level. Re-stating the mapping (same values:
-# kustomize matches through the base's carried-over name annotation, so the
-# migration Job is idempotent) resolves `image: lumen` in config-gate too.
-# LOCKSTEP: bump tooling edits ghcr.io/kanatabi/lumen newTag HERE, in
-# environments/production/earendil + environments/production/mellon +
-# environments/staging/* + environments/foundation/lumen, and the
-# bases, in ONE commit — the gate must never decode epochs with an image
-# older than the app's.
+# THE BASE NO LONGER PINS IMAGES (convergence 2026-11-13, fixture-proven):
+# a base image transformation rewrites `image: lumen` BEFORE this overlay's
+# stanza can match, so a base pin silently wins over the env tree — fatal
+# for per-env bumping. With the base stanzaless, the re-statement HERE is
+# the authority for BOTH the base's pods and the component's gate Job
+# (which joins at this level and never saw a base transformation anyway).
+# LOCKSTEP: bump tooling edits ghcr.io/kanatabi/lumen newTag HERE and in
+# environments/production/earendil + environments/production/mellon in ONE
+# commit (same-env only — a production bump never re-pins staging; each
+# env's gate decodes with that env's lumen, so same-env lockstep is exactly
+# what keeps gate and app in step). The gate must never decode epochs with
+# an image older than the app's.
 images:
   - name: lumen
     newName: ghcr.io/kanatabi/lumen

@@ -14,7 +14,13 @@ resources:
 - deployment.yaml
 - service.yaml
 - ingress.yaml
-images:
-- name: earendil
-  newName: ghcr.io/kanatabi/earendil
-  newTag: v1.1.0
+# NO images: stanza HERE — the base is SHAPE, versions are ENV decisions
+# (Phase-11). Kustomize v5.8.1 fact (fixture-proven, convergence 2026-11-13):
+# an inner (base) image transformation rewrites the image name BEFORE the
+# outer (overlay) one matches, so a base stanza SILENTLY WINS over every
+# env overlay's re-statement — the overlay pins would be decorative and a
+# base edit would leak into every env at once. The env overlays
+# (environments/{foundation,staging,production}/<app>) are therefore the
+# ONLY pin homes; the bump tooling's same-env lockstep is exactly right.
+# Base standalone renders keep `image: earendil` as the honest placeholder
+# (nothing deploys a base — the hubs point at env trees only).

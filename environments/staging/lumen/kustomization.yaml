@@ -42,9 +42,16 @@ components:
   - ../../../components/single-node
   - ../../../components/config-gate
 
-# Image pins mirror the base stanza (bump tooling keeps base + env overlays
-# in ONE commit — same lockstep discipline as the gate image):
-#   lumen v2.2.0
+# THE BASE NO LONGER PINS IMAGES (convergence 2026-11-13, fixture-proven: a
+# base transformation rewrites the image BEFORE the overlay stanza can
+# match — a base pin silently outranks every env tree). This stanza is the
+# authority for the base's pods AND the component's gate Job (which joins
+# here and resolves the still-bare `image: lumen` through this mapping).
+# LOCKSTEP (SAME-ENV): bump tooling edits ghcr.io/kanatabi/lumen newTag
+# HERE and in environments/staging/earendil + environments/staging/mellon
+# in ONE commit — never another env's dirs; each env's gate decodes epochs
+# with that env's lumen, so same-env travel is exactly what keeps the pair
+# honest. (lumen v2.2.0 pinned across all three staging dirs today.)
 images:
   - name: lumen
     newName: ghcr.io/kanatabi/lumen

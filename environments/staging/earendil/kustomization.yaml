@@ -33,15 +33,18 @@ components:
   - ../../../components/single-node
   - ../../../components/config-gate
 
-# Image pins mirror the base stanzas (bump tooling keeps base + env overlays
-# in ONE commit — same lockstep discipline as the gate image):
+# THE BASES NO LONGER PIN IMAGES (convergence: a base stanza outranks the
+# env tree — env overlays are the only version homes). This stanza is the
+# authority for this fleet; the gate's lumen stanza below travels with the
+# lumen-STAGING bump (same-env lockstep — see the note on that entry):
 #   earendil v1.1.0
 images:
   - name: earendil
     newName: ghcr.io/kanatabi/earendil
     newTag: v1.1.0
   # config-gate decodes epochs with the lumen binary — LOCKSTEP tag
-  # (bump tooling keeps base + every overlay's `lumen` stanza in ONE commit).
+  # (the lumen-STAGING bump edits every `lumen` stanza under
+  # environments/staging/* in ONE commit — never another env's).
   - name: lumen
     newName: ghcr.io/kanatabi/lumen
     newTag: v2.2.0

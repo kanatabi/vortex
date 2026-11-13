@@ -27,8 +27,10 @@ components:
   - ../../../components/single-node
   - ../../../components/config-gate
 
-# Image pins mirror the base stanza (bump tooling keeps base + env overlays
-# in ONE commit): mellon v1.1.0
+# THE BASES NO LONGER PIN IMAGES (convergence: a base stanza outranks the
+# env tree — env overlays are the only version homes). The mellon-fleet
+# bump edits this stanza AND the gate's lumen stanza below in ONE commit
+# (same-env lockstep; a production bump never reaches staging)): mellon v1.1.0
 images:
   - name: mellon
     newName: ghcr.io/kanatabi/mellon

@@ -16,7 +16,11 @@ resources:
 - worker-deployment.yaml
 - service.yaml
 - migrate-job.yaml
-images:
-- name: lumen
-  newName: ghcr.io/kanatabi/lumen
-  newTag: v2.2.0
+# NO images: stanza HERE — the base is SHAPE, versions are ENV decisions
+# (Phase-11; fixture-proven kustomize v5.8.1 semantics: an inner base
+# transformation wins over every outer overlay re-statement, so a base pin
+# would silently override the env trees and leak across envs — fatal for
+# the three-fleet model where foundation/staging/production lumen pins
+# diverge). The env overlays (environments/*/lumen*) are the ONLY pin
+# homes; the bump tooling's same-env lockstep is exactly right; base
+# standalone keeps `image: lumen` as the honest placeholder.

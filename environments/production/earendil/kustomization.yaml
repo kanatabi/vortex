@@ -36,11 +36,12 @@ components:
 
 # The config-gate Job (rendered by the component into THIS namespace) runs
 # the lumen binary — same tag the backend itself ships, deliberately.
-# LOCKSTEP: bump tooling edits ghcr.io/kanatabi/lumen newTag HERE, in
-# environments/production/lumen, environments/production/mellon,
-# environments/staging/*, environments/foundation/lumen and the bases,
-# in ONE commit — a gate decoder older than the app's config epoch is how
-# drift starts.
+# LOCKSTEP (SAME-ENV — production): the lumen-production bump edits the
+# `name: lumen` stanzas of environments/production/{lumen,earendil,mellon}
+# in ONE commit — never staging's or foundation's dirs (each env's gate
+# decodes with that env's lumen; the bases pin nothing since the
+# convergence round). A gate decoder older than the app's config epoch is
+# how drift starts.
 images:
   - name: earendil
     newName: ghcr.io/kanatabi/earendil
