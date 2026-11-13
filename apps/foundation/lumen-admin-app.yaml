@@ -1,0 +1,40 @@
+# FOUNDATION hub (VPS entrypoint #1), wave 2: the lumen CONTROL PLANE —
+# role=admin, one Deployment, Service `lumen-admin` (unsuffixed by naming
+# contract), NO ingress (mellon relays to it in-cluster; §2). Wave 2 waits
+# structurally on the `bao` store's Ready condition: its lumen-admin-secrets
+# feed is kv/lumen/shared, and Patroni (wave 1) owns the lumen_admin
+# database its PreSync migrate Job targets. This overlay ALSO renders the
+# three co-tenant app namespaces (lumen/earendil/mellon) — foundation-owned
+# so the env trees never fight over them (see the overlay header).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: lumen-admin
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/kanatabi/vortex.git'
+    targetRevision: HEAD
+    path: environments/foundation/lumen-admin
+  # ESO's webhook DEFAULTS these spec fields server-side (creationPolicy,
+  # deletionPolicy, template engineVersion/mergePolicy) — they never exist
+  # in Git, so without this the app is PERPETUALLY OutOfSync and selfHeal
+  # would thrash the ES forever. Discovered on the live walk 2026-11-10.
+  ignoreDifferences:
+    - group: external-secrets.io
+      kind: ExternalSecret
+      jqPathExpressions:
+        - .spec.target.creationPolicy
+        - .spec.target.deletionPolicy
+        - .spec.target.template.engineVersion
+        - .spec.target.template.mergePolicy
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: lumen
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

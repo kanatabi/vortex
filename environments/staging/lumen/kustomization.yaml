@@ -54,8 +54,9 @@ patches:
   # and fight on every selfHeal pass. Ownership is therefore foundation-side
   # (applications/*/namespace.yaml is deleted out of every env-tree build;
   # environments/foundation/lumen-admin renders all three app namespaces
-  # label-free). $patch: delete runs before the labels transformer — so the
-  # Namespace never sees one.
+  # once, labeled omicron/env=shared — the truthful plane: shared plumbing).
+  # $patch: delete runs before the labels transformer — so the Namespace
+  # never sees one here.
   - patch: |-
       $patch: delete
       apiVersion: v1

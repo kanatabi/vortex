@@ -1,5 +1,5 @@
-# App-of-apps hub, PRODUCTION APPS entrypoint (#2 of two) — the application
-# plane: lumen, earendil, mellon, certificates, observability. Apply ONLY
+# App-of-apps hub, PRODUCTION entrypoint (#2 of two) — the production
+# application plane: lumen, earendil, mellon, certificates. Apply ONLY
 # after bootstrap/apps-hub-foundation.yaml is healthy AND the vault has been
 # seeded via runbook M3 — the store (`bao`, foundation wave 1) must be Ready
 # and the kv/{app}/production paths populated before anything here renders
@@ -7,23 +7,28 @@
 # in sync-wave numbers; with two it lives in the entrypoint itself.
 # Waves restart per hub (this hub's own numbering):
 #   0 lumen (the dependency root — every app reads its API),
-#   1 earendil + mellon + certificates, 2 observability.
+#   1 earendil + mellon + certificates. (observability moved to the
+#   FOUNDATION hub — it is shared estate plumbing, not a per-env app.)
 # Chicken-and-egg, the documented manual exception (see
 # bootstrap/apps-hub-foundation.yaml for the full story — the two manual
 # applies ARE the exception pair).
-# Non-recursive sync of apps/applications/ — no other hub (apps/,
-# apps/foundation/, apps/single-node/) sees these CRs, and vice versa.
+# NON-recursive sync of apps/production/ — no other hub (apps/,
+# apps/foundation/, apps/staging/) sees these CRs, and vice versa: exactly
+# one foundation+apps pair may own a cluster. The paths here are the
+# environments/production/* overlays (nameSuffix "-production" +
+# omicron/env=production); the staging twin pairs with
+# bootstrap/apps-hub-staging.yaml on the SAME cluster.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: platform-apps-hub-apps
+  name: platform-apps-hub-production
   namespace: argocd
 spec:
   project: default
   source:
     repoURL: 'https://github.com/kanatabi/vortex.git'
     targetRevision: HEAD
-    path: apps/applications/
+    path: apps/production/
     directory:
       recurse: false
   destination:

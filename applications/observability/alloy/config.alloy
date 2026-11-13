@@ -63,6 +63,14 @@ prometheus.scrape "cadvisor" {
 
 // ================= metrics: annotated app pods (the /metrics contract) =================
 // Pods opt in with prometheus.io/{scrape,port,path} annotations — see Phase 5.
+// ENV ATTRIBUTION (feat/environments): there is NO per-environment Alloy
+// external_labels mechanism — one DaemonSet fleet watches every namespace
+// and cannot stamp "which env am I". The pipeline instead COPIES the pod
+// label omicron/env (shared|staging|production — stamped by every overlay's
+// labels transformer onto pod templates) into a normalized `env` label.
+// The env trees are what make this true; Grafana queries/boards filter on
+// env=... (see applications/observability/README.md). Unlabeled pods
+// (system components, pre-contract strays) simply get no env label.
 discovery.kubernetes "pods" { role = "pod" }
 discovery.relabel "pod_metrics" {
     targets = discovery.kubernetes.pods.targets
@@ -70,6 +78,11 @@ discovery.relabel "pod_metrics" {
     rule { action = "replace", regex = "(.+)", source_labels = ["__meta_kubernetes_pod_annotation_prometheus_io_path"], target_label = "__metrics_path__" }
     rule { action = "replace", regex = "([^:]+)(?::\\d+)?;(\\d+)", separator = ";", source_labels = ["__address__", "__meta_kubernetes_pod_annotation_prometheus_io_port"], target_label = "__address__" }
     rule { action = "labelmap", regex = "__meta_kubernetes_pod_label_(.+)" }
+    // omicron/env -> env (meta-label sanitization: `omicron/env` becomes
+    // `__meta_kubernetes_pod_label_omicron_env`; empty stays empty -> drop
+    // the target_label rewrite when the source is missing is automatic for
+    // replace with non-matching regex — the default rule keeps it absent).
+    rule { action = "replace", regex = "(.+)", source_labels = ["__meta_kubernetes_pod_label_omicron_env"], target_label = "env" }
     rule { action = "replace", source_labels = ["__meta_kubernetes_namespace"], target_label = "namespace" }
     rule { action = "replace", source_labels = ["__meta_kubernetes_pod_name"], target_label = "pod" }
 }

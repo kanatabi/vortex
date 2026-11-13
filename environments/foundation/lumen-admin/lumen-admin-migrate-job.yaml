@@ -1,0 +1,49 @@
+# Schema migration for the ADMIN database (lumen_admin, owner
+# db_user_admin) — the same lifecycle doctrine as applications/lumen's
+# migrate Job (PreSync hook, must succeed or the sync blocks), but
+# envFrom lumen-admin-secrets so `lumen migrate` runs against the admin
+# DB, not a tenant's. The cms trees' migrate Jobs cover lumen_staging /
+# lumen_production; nothing else creates lumen_admin's schema — without
+# this Job the Control Plane crash-loops on first boot.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: lumen-admin-migrate
+  namespace: lumen
+  labels:
+    app: lumen-admin-migrate
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
+spec:
+  backoffLimit: 3
+  activeDeadlineSeconds: 300
+  ttlSecondsAfterFinished: 600
+  template:
+    metadata:
+      labels:
+        app: lumen-admin-migrate
+    spec:
+      restartPolicy: Never
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-pool
+                    operator: NotIn
+                    values: ['platform']
+      enableServiceLinks: false   # estate doctrine (see lumen base)
+      containers:
+        - name: migrate
+          image: lumen
+          imagePullPolicy: IfNotPresent
+          args: ["migrate"]
+          envFrom:
+            # optional:true — a missing Secret yields lumen's own loud config
+            # error (clean Job failure, blocked sync), not an opaque
+            # CreateContainerConfigError the hook would wait on till deadline.
+            - secretRef: { name: lumen-admin-secrets, optional: true }
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 500m, memory: 256Mi }

@@ -1,0 +1,116 @@
+# Production view of mellon (environments tree — re-homed from
+# overlays/production/mellon, feat/environments-production).
+# Base manifests + the ESO render chain at kv/mellon/production. Same
+# doctrine everywhere: zero config literals in the base, env arrives as the
+# suffixed app-config-production ConfigMap.
+#
+# NAMING CONTRACT: nameSuffix "-production" + labels omicron/env=production
+# (includeSelectors). Mechanics + the spec-field trap: read
+# environments/staging/lumen/kustomization.yaml first; identical rules.
+# No selfsigned — real TLS via the certificates app (console.gofar.id is
+# surface #2, TLS mandatory; the staging twin is staging-console.gofar.id).
+#
+# VAULT-VALUE CONTRACT (seeding docs / runbook): kv/mellon/production
+# property API_BASE MUST be
+#   http://lumen-http-server-production.lumen.svc.cluster.local
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: mellon
+nameSuffix: -production
+
+resources:
+  - ../../../applications/mellon
+  - externalsecret.yaml
+
+components:
+  - ../../../components/single-node
+  - ../../../components/config-gate
+
+# The config-gate Job runs the lumen binary — LOCKSTEP tag, see the note in
+# environments/production/earendil (bump tooling edits every lumen stanza in
+# ONE commit).
+images:
+  - name: mellon
+    newName: ghcr.io/kanatabi/mellon
+    newTag: v1.1.0
+  - name: lumen
+    newName: ghcr.io/kanatabi/lumen
+    newTag: v2.2.0
+
+patches:
+  # `ns mellon` is a CO-TENANT object — deleted here; foundation-owned
+  # (environments/foundation/lumen-admin; story in
+  # environments/staging/lumen/kustomization.yaml).
+  - patch: |-
+      $patch: delete
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: mellon
+
+  # TLS ownership -> the certificates app (see environments/production/earendil
+  # for the full story, incl. WHY these are JSON6902 ops). Explicit
+  # Certificate console-gofar-id renders tls-console — UNSUFFIXED on purpose
+  # (foundation-plane cert app); the backend service name is stated final.
+  - target:
+      kind: Ingress
+      name: mellon-web-server
+    patch: |-
+      - op: remove
+        path: /metadata/annotations/cert-manager.io~1cluster-issuer
+      - op: replace
+        path: /spec/rules
+        value:
+          - host: console.gofar.id
+            http:
+              paths:
+                - path: /
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: mellon-web-server-production
+                      port:
+                        name: http
+      - op: replace
+        path: /spec/tls
+        value:
+          - secretName: tls-console
+            hosts:
+              - console.gofar.id
+
+  # envFrom -> the suffixed ConfigMap this overlay's ES renders.
+  - target:
+      kind: Deployment
+      name: mellon-web-server
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/envFrom/0/configMapRef/name
+        value: app-config-production
+
+  # THE EPOCH TRIO — annotation == --declared == ES annotation ("0").
+  - target:
+      kind: Deployment
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: unused
+      spec:
+        template:
+          metadata:
+            annotations:
+              omicron/config.epoch: "0"
+  - target:
+      kind: Job
+      name: config-gate
+    patch: |-
+      # Full-args replacement (never element-wise) — see component header.
+      - op: replace
+        path: /spec/template/spec/containers/0/args
+        value: ["config", "check-epoch", "--app", "mellon", "--env", "production", "--declared", "0"]
+
+labels:
+  - pairs:
+      omicron/env: production
+    includeSelectors: true

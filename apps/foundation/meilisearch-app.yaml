@@ -12,7 +12,7 @@ spec:
   source:
     repoURL: 'https://github.com/kanatabi/vortex.git'
     targetRevision: HEAD
-    path: overlays/production/meilisearch
+    path: environments/foundation/meilisearch
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: search

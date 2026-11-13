@@ -1,11 +1,16 @@
-# APPS hub (VPS entrypoint #2), wave 1: admin portal (console.gofar.id; reads
-# lumen (wave 0); real ACME TLS via the certificates app, same wave — go-live
-# ordering in the base ingress header still binds: DNS first, real cert,
-# GATE #10 before the first login).
+# PRODUCTION hub (VPS entrypoint #2), wave 1: TLS — arrives WITH the frontends it
+# serves, never after them. Under the old single-hub numbering certificates
+# had to sit in wave 2: its cf-token feed is a store consumer and wave 1 then
+# raced the still-`bao`-less store. The hub split dissolved that constraint —
+# by the time THIS hub is applied the store is Ready and seeded (foundation
+# hub + runbook M3), so wave 1 is the earliest structurally-safe slot and it
+# is exactly the apps' own wave. The frontends gain no hard dependency on it:
+# an Ingress missing its tls Secret is merely not-yet-terminating, and Traefik
+# picks the cert up the moment issuance lands.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: mellon
+  name: certificates
   namespace: argocd
   annotations:
     argocd.argoproj.io/sync-wave: "1"
@@ -14,7 +19,7 @@ spec:
   source:
     repoURL: 'https://github.com/kanatabi/vortex.git'
     targetRevision: HEAD
-    path: overlays/production/mellon
+    path: applications/certificates
   # ESO's webhook DEFAULTS these spec fields server-side (creationPolicy,
   # deletionPolicy, template engineVersion/mergePolicy) — they never exist in
   # Git, so without this the app is PERPETUALLY OutOfSync and selfHeal would
@@ -29,7 +34,7 @@ spec:
         - .spec.target.template.mergePolicy
   destination:
     server: 'https://kubernetes.default.svc'
-    namespace: mellon
+    namespace: cert-manager
   syncPolicy:
     automated:
       prune: true

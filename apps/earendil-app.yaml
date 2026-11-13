@@ -8,7 +8,7 @@ spec:
   source:
     repoURL: 'https://github.com/kanatabi/vortex.git'
     targetRevision: HEAD
-    path: applications/earendil        # prod base; repoint at overlays/production/earendil per §5.3
+    path: applications/earendil        # prod base; repoint at environments/production/earendil per §5.3
   # ESO's webhook DEFAULTS these spec fields server-side (creationPolicy,
   # deletionPolicy, template engineVersion/mergePolicy) — they never exist in
   # Git, so without this the app is PERPETUALLY OutOfSync and selfHeal would

@@ -25,7 +25,7 @@ data:
         url: http://loki.observability.svc.cluster.local:3100   # not a reviewable contract.
         isDefault: false
       - name: VictoriaMetrics
-        uid: victoria-metrics    # stable id — the alert rules in overlays/production/observability bind here
+        uid: victoria-metrics    # stable id — the alert rules in environments/foundation/observability bind here
         type: prometheus
         access: proxy
         url: http://victoria-metrics.observability.svc.cluster.local:8428

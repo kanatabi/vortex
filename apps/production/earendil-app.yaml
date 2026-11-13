@@ -1,4 +1,4 @@
-# APPS hub (VPS entrypoint #2), wave 1: blog SSR — reads lumen (wave 0)
+# PRODUCTION hub (VPS entrypoint #2), wave 1: blog SSR — reads lumen (wave 0)
 # through the cluster-internal DNS in app-config (rendered from
 # kv/earendil/production by the store; TLS from the certificates app, same
 # wave).
@@ -14,7 +14,7 @@ spec:
   source:
     repoURL: 'https://github.com/kanatabi/vortex.git'
     targetRevision: HEAD
-    path: overlays/production/earendil
+    path: environments/production/earendil
   # ESO's webhook DEFAULTS these spec fields server-side (creationPolicy,
   # deletionPolicy, template engineVersion/mergePolicy) — they never exist in
   # Git, so without this the app is PERPETUALLY OutOfSync and selfHeal would

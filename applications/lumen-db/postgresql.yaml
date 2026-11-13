@@ -33,16 +33,28 @@ spec:
   resources:
     requests: { cpu: '250m', memory: '512Mi' }
     limits: { cpu: '1000m', memory: '1Gi' }
-  # ONE Patroni cluster (shared instances) serving BOTH environments —
-  # separation lives at database + credentials level, selected per env by the
-  # LUMEN_DB_URL behind each overlay's Bao path (INFRA doc §5):
-  #   kv/lumen/production -> .../lumen-pg.db.svc/lumen_production
-  #   kv/lumen/staging    -> .../lumen-pg.db.svc/lumen_staging
-  # Accepted trade-off: staging load spikes share prod's box (right for blog scale).
+  # ONE Patroni cluster (shared instances, foundation plane) serving ALL
+  # environments — THREE logical databases + owner users, per the owner
+  # ruling of the environments restructure:
+  #   lumen_admin      : db_user_admin       (foundation Control Plane, kv/lumen/shared)
+  #   lumen_staging    : db_user_staging     (cms staging,   kv/lumen/staging)
+  #   lumen_production : db_user_production  (cms production, kv/lumen/production)
+  # Separation lives at database + credentials level, selected per tenant by
+  # the LUMEN_DB_URL behind each overlay's Bao path (INFRA doc §5) — no
+  # manifest change is needed to add an environment beyond a new db/user
+  # pair here + a seed there. The operator generates the per-user credentials
+  # into its DOTTED-NAMING Secrets: lumen-pg.<user> (e.g.
+  # lumen-pg.db_user_admin) — walk-proven shape, operator v1.13.0 CR fields
+  # are `databases:`/`users:` (the walk's apiserver accepted exactly this).
+  # Accepted trade-off: staging load spikes share prod's box (right for blog
+  # scale).
   databases:
+    lumen_admin: db_user_admin
     lumen_staging: db_user_staging
     lumen_production: db_user_production
   users:
+    db_user_admin:
+      - createdb
     db_user_staging:
       - createdb
     db_user_production:
