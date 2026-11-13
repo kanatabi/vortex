@@ -24,7 +24,7 @@ components:
 images:
   - name: lumen
     newName: ghcr.io/kanatabi/lumen
-    newTag: v2.0.0
+    newTag: v2.2.0
 
 # TLS ownership moves to the certificates app here (PR feat/certificates-app):
 # the explicit Certificate gofar-id renders Secret tls-gofar; the base's
