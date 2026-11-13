@@ -1,21 +1,26 @@
-# wave 2: admin portal (console.gofar.id; self-signed locally by the component).
+# STAGING hub (entrypoint), wave 1: staging admin portal
+# (staging-console.gofar.id; reads the staging lumen fleet, wave 0; TLS via
+# the certificates app's staging-console-gofar-id -> tls-console-staging).
+# Go-live ordering from the base ingress header still binds per surface:
+# DNS resolves BEFORE first issuance, and GATE #10 clears BEFORE the first
+# login from the world.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: mellon
+  name: mellon-staging
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   project: default
   source:
     repoURL: 'https://github.com/kanatabi/vortex.git'
     targetRevision: HEAD
-    path: overlays/local/mellon
+    path: environments/staging/mellon
   # ESO's webhook DEFAULTS these spec fields server-side (creationPolicy,
-  # deletionPolicy, template engineVersion/mergePolicy) — they never exist in
-  # Git, so without this the app is PERPETUALLY OutOfSync and selfHeal would
-  # thrash the ES forever. Discovered on the live walk 2026-11-10.
+  # deletionPolicy, template engineVersion/mergePolicy) — they never exist
+  # in Git, so without this the app is PERPETUALLY OutOfSync and selfHeal
+  # would thrash the ES forever. Discovered on the live walk 2026-11-10.
   ignoreDifferences:
     - group: external-secrets.io
       kind: ExternalSecret

@@ -1,0 +1,39 @@
+# STAGING hub (entrypoint), wave 1: staging blog SSR — reads the staging
+# lumen fleet (wave 0 of THIS hub) through the suffixed service DNS in
+# app-config-staging (rendered from kv/earendil/staging by the store); TLS
+# from the certificates app (production hub — staging-gofar-id renders
+# tls-gofar-staging; the frontends merely consume the Secret, so no cross-
+# hub wave coupling: a missing cert Secret is not-yet-terminating, never a
+# failed sync).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: earendil-staging
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/kanatabi/vortex.git'
+    targetRevision: HEAD
+    path: environments/staging/earendil
+  # ESO's webhook DEFAULTS these spec fields server-side (creationPolicy,
+  # deletionPolicy, template engineVersion/mergePolicy) — they never exist
+  # in Git, so without this the app is PERPETUALLY OutOfSync and selfHeal
+  # would thrash the ES forever. Discovered on the live walk 2026-11-10.
+  ignoreDifferences:
+    - group: external-secrets.io
+      kind: ExternalSecret
+      jqPathExpressions:
+        - .spec.target.creationPolicy
+        - .spec.target.deletionPolicy
+        - .spec.target.template.engineVersion
+        - .spec.target.template.mergePolicy
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: earendil
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

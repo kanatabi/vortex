@@ -7,7 +7,7 @@
 # NAMING CONTRACT: nameSuffix "-production" + labels omicron/env=production
 # (includeSelectors). Mechanics + the spec-field trap: read
 # environments/staging/lumen/kustomization.yaml first; identical rules.
-# No selfsigned — real TLS via the certificates app (console.gofar.id is
+# Real TLS via the certificates app (console.gofar.id is
 # surface #2, TLS mandatory; the staging twin is staging-console.gofar.id).
 #
 # VAULT-VALUE CONTRACT (seeding docs / runbook): kv/mellon/production

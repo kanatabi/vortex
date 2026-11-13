@@ -1,3 +1,9 @@
+# App-of-apps hub, 3-NODE BLUEPRINT (future scale-out shape; the live estate
+# runs the environments trio — foundation + production + staging hubs).
+# Non-recursive sync of apps/ (flat CR set pointing at the ESO-free bases);
+# exactly one hub (or hub set) may own a cluster.
+#   local rehearsal history: archived in the workspace RUNBOOK (the deleted
+#   apps-hub-single-node.yaml + apps/single-node/ live in git history).
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
