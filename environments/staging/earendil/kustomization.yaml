@@ -1,0 +1,132 @@
+# Staging view of earendil (environments tree, feat/environments-staging).
+# Co-tenants the PRODUCTION namespace `earendil` — identity is nameSuffix
+# "-staging" + labels transformer omicron/env=staging WITH includeSelectors
+# (Service/Deployment selectors become env-restricted, so staging endpoints
+# can never receive production traffic). Hosts per the NAMING CONTRACT:
+# staging gets staging.gofar.id ONLY (www is production-only by ruling).
+#
+# THE VAULT-VALUE CONTRACT (paste into the seeding docs / runbook):
+# the staging frontend's API_BASE value lives at kv/earendil/staging and
+# MUST name the SUFFIXED service —
+#   http://lumen-http-server-staging.lumen.svc.cluster.local
+# The manifest job is done here: the Service renders as
+# lumen-http-server-staging in ns lumen (see environments/staging/lumen),
+# so that seeded value resolves. A stale unsuffixed value points at the
+# production fleet — the pair (manifest name, vault value) is the contract.
+#
+# nameSuffix does NOT rewrite spec fields (the kustomize trap): the ingress
+# backend name and the envFrom configMapRef are JSON6902-patched; the ES
+# target + Certificate secretName are AUTHORED final in this overlay's own
+# files. Patches target PRE-suffix names (patches run before suffix in
+# kustomize v5.8.1 — verified).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: earendil
+nameSuffix: -staging
+
+resources:
+  - ../../../applications/earendil
+  - externalsecret.yaml
+
+components:
+  - ../../../components/single-node
+  - ../../../components/config-gate
+
+# Image pins mirror the base stanzas (bump tooling keeps base + env overlays
+# in ONE commit — same lockstep discipline as the gate image):
+#   earendil v1.1.0
+images:
+  - name: earendil
+    newName: ghcr.io/kanatabi/earendil
+    newTag: v1.1.0
+  # config-gate decodes epochs with the lumen binary — LOCKSTEP tag
+  # (bump tooling keeps base + every overlay's `lumen` stanza in ONE commit).
+  - name: lumen
+    newName: ghcr.io/kanatabi/lumen
+    newTag: v2.2.0
+
+patches:
+  # `ns earendil` is a CO-TENANT object — deleted here; rendered label-free
+  # exactly once by environments/foundation/lumen-admin (see the full story
+  # in environments/staging/lumen/kustomization.yaml).
+  - patch: |-
+      $patch: delete
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: earendil
+
+  # TLS ownership, staging edition (same story as the production overlay):
+  # the explicit Certificate staging-gofar-id in applications/certificates
+  # renders tls-gofar-staging (one auditable cert list for the whole estate,
+  # synced by the production hub's certificates app — the staging Ingresses
+  # merely consume its Secret, exactly like production consumes tls-gofar);
+  # the base's ingress-shim annotation would double-issue a shadow
+  # Certificate for the SAME host against LE rate limits — removed.
+  # Rules are REPLACED wholesale (the base carries two www+apex hosts;
+  # staging owns exactly one). Backend name: kustomize's Service name
+  # reference would rewrite it anyway, but the contract demands the
+  # reference be EXPLICIT — a rename of the Service without its Ingress
+  # must fail review, not silently route staging at prod.
+  - target:
+      kind: Ingress
+      name: earendil-web-server
+    patch: |-
+      - op: remove
+        path: /metadata/annotations/cert-manager.io~1cluster-issuer
+      - op: replace
+        path: /spec/rules
+        value:
+          - host: staging.gofar.id
+            http:
+              paths:
+                - path: /
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: earendil-web-server-staging
+                      port:
+                        name: http
+      - op: replace
+        path: /spec/tls
+        value:
+          - secretName: tls-gofar-staging
+            hosts:
+              - staging.gofar.id
+
+  # envFrom -> the suffixed ConfigMap this overlay's ES renders (target.name
+  # is authored final in externalsecret.yaml; the reference here must match).
+  - target:
+      kind: Deployment
+      name: earendil-web-server
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/envFrom/0/configMapRef/name
+        value: app-config-staging
+
+  # THE EPOCH TRIO — annotation == --declared == ES annotation ("0").
+  - target:
+      kind: Deployment
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: unused
+      spec:
+        template:
+          metadata:
+            annotations:
+              omicron/config.epoch: "0"
+  - target:
+      kind: Job
+      name: config-gate
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/args
+        value: ["config", "check-epoch", "--app", "earendil", "--env", "staging", "--declared", "0"]
+
+labels:
+  - pairs:
+      omicron/env: staging
+    includeSelectors: true
