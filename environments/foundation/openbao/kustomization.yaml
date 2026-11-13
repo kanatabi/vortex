@@ -1,0 +1,35 @@
+# FOUNDATION plane view of openbao — the values store EVERY environment shares.
+# Re-homed from overlays/production/openbao (feat/environments): the estate now
+# has three environment trees — environments/{foundation,staging,production} —
+# where the foundation plane (vault, ESO, store, DB, search, observability)
+# is env-agnostic shared plumbing, labeled omicron/env=shared and carrying NO
+# nameSuffix (one instance of each, plain names). Staging and production are
+# tenants of this plane, not owners of these paths.
+# Cluster SHAPE: single VPS node today — the single-node component collapses
+# the 3-node blueprint (owner decision 2026-11-10).
+# The manual init/unseal/AppRole bootstrap exception is documented in the base
+# (applications/openbao/openbao.yaml header) and applies here unchanged.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../../applications/openbao
+
+components:
+  - ../../../components/single-node
+
+# Foundation identity label. includeSelectors:false — these workloads keep
+# their existing selectors and names here (a selector churn on a live
+# Deployment is an immutable-field conflict); includeTemplates:true still
+# stamps the POD TEMPLATE, which is what the Alloy env relabel consumes
+# (see applications/observability/alloy/config.alloy). Namespaces are the
+# ones only THIS plane syncs (secrets, db, search, observability,
+# external-secrets) — labeling them cannot start a two-owner drift fight.
+# NOTE: the shared APP namespaces (lumen, earendil, mellon — co-tenanted by
+# staging and production) are foundation-owned in the lumen-admin overlay,
+# deliberately OUTSIDE any labels transformer, so they render unlabeled.
+labels:
+  - pairs:
+      omicron/env: shared
+    includeSelectors: false
+    includeTemplates: true

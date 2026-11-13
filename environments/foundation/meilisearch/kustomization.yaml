@@ -1,0 +1,22 @@
+# FOUNDATION plane view of meilisearch: the ESO-free base + placement
+# collapse. Re-homed from overlays/production/meilisearch (feat/environments).
+# ONE shared instance serves every environment (ns `search`): the per-env
+# separation is the INDEX NAMING each environment's lumen uses —
+# LUMEN_MEILI_INDEX_* are values behind the cms overlays' Bao paths
+# (kv/lumen/staging, kv/lumen/production), not manifests. No env axis lives
+# here; this is a platform service, configured identically at every size
+# (the master key arrives as a bootstrap Secret, §5.6 family).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../../applications/meilisearch
+
+components:
+  - ../../../components/single-node
+
+labels:
+  - pairs:
+      omicron/env: shared
+    includeSelectors: false
+    includeTemplates: true

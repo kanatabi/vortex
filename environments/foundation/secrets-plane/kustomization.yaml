@@ -1,0 +1,23 @@
+# FOUNDATION plane view of the secrets plane: the `bao` ClusterSecretStore
+# as-is. Re-homed from overlays/production/secrets-plane (feat/environments).
+# Its Ready condition gates every secret materialization in the estate: it
+# stays NOT-Ready until the runbook M3 init/unseal/AppRole/seed lands, and
+# the application hubs are applied only after that — the seed-before-apps
+# order is structural, not a suggestion. The single-node component is kept
+# for chain uniformity (no pod shapes live in this dir today, so the patch
+# targets no-op — future workloads here inherit the VPS shape automatically).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../../applications/secrets-plane
+
+components:
+  - ../../../components/single-node
+
+labels:
+  - pairs:
+      omicron/env: shared
+    # ClusterSecretStore is cluster-scoped and has no selectors; the label is
+    # metadata-only across the board here (foundation identity marker).
+    includeSelectors: false
