@@ -19,11 +19,13 @@ data:
     apiVersion: 1
     datasources:
       - name: Loki
-        type: loki
-        access: proxy
-        url: http://loki.observability.svc.cluster.local:3100
+        uid: loki            # EXPLICIT uid (feat/observability-production): provisioned
+        type: loki           # alert rules reference datasources BY UID — unuided
+        access: proxy        # provisioned datasources get a generated one, which is
+        url: http://loki.observability.svc.cluster.local:3100   # not a reviewable contract.
         isDefault: false
       - name: VictoriaMetrics
+        uid: victoria-metrics    # stable id — the alert rules in overlays/production/observability bind here
         type: prometheus
         access: proxy
         url: http://victoria-metrics.observability.svc.cluster.local:8428

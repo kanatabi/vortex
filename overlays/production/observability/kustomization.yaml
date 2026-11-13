@@ -1,0 +1,47 @@
+# Production (single VPS) view of observability: the same base + placement
+# collapse (components/single-node, no selfsigned — grafana's door is TLS via
+# tls-anor from applications/certificates).
+#
+# SIZING AUDIT (the brief's budget vs the base, checked line by line):
+#   VictoriaMetrics  retention 30d + 10Gi + 200m/384Mi -> 500m/512Mi   = BASE
+#   Loki             retention 168h + 15Gi + 200m/512Mi -> 500m/800Mi  = BASE
+#   Alloy (DaemonSet) 100m/128Mi -> 300m/256Mi                          = BASE
+#   Grafana          100m/128Mi -> 300m/256Mi + 1Gi PVC                 = BASE
+# The scaffold (feat/scaffold-observability-meilisearch) shipped exactly the
+# §1 VPS budget, so this overlay adds NO sizing patches — inventing no-op
+# patches would fake a drift that doesn't exist and give future drift a place
+# to hide. What this overlay DOES own: the five estate alerts (alerting.yaml,
+# mounted below) and any future per-VPS knob.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../../applications/observability
+  - alerting.yaml
+
+components:
+  - ../../../components/single-node
+
+patches:
+  # Wire the provisioning file family into Grafana's on-disk provisioning root.
+  # Grafana loads every *.yaml under /etc/grafana/provisioning/<dir> at startup;
+  # datasources keeps its existing mount, this ADDS the alerting one (strategic
+  # merge on the name-keyed volume/volumeMount lists).
+  - target:
+      kind: Deployment
+      name: grafana
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: unused
+      spec:
+        template:
+          spec:
+            containers:
+              - name: grafana
+                volumeMounts:
+                  - { name: alerting, mountPath: /etc/grafana/provisioning/alerting, readOnly: true }
+            volumes:
+              - name: alerting
+                configMap: { name: grafana-alerting }

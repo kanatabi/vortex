@@ -1,0 +1,38 @@
+# PRODUCTION hub (single VPS), wave 2: observability, with the apps (the brief
+# puts it "in the apps wave" — wave 2 is also the first wave gated on the Ready
+# `bao` store, which grafana's config feeds consume; grafana degrades to
+# defaults via optional:true, never a blocked wave). The estate's only viewer:
+# Alloy (DaemonSet) + Loki + VictoriaMetrics + Grafana at anor.gofar.id, sized
+# to the §1 VPS budget, alerting via the provisioned five rules (PR history).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: observability
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/kanatabi/vortex.git'
+    targetRevision: HEAD
+    path: overlays/production/observability
+  # ESO's webhook DEFAULTS these spec fields server-side (creationPolicy,
+  # deletionPolicy, template engineVersion/mergePolicy) — they never exist in
+  # Git, so without this the app is PERPETUALLY OutOfSync and selfHeal would
+  # thrash the ES forever. Discovered on the live walk 2026-11-10.
+  ignoreDifferences:
+    - group: external-secrets.io
+      kind: ExternalSecret
+      jqPathExpressions:
+        - .spec.target.creationPolicy
+        - .spec.target.deletionPolicy
+        - .spec.target.template.engineVersion
+        - .spec.target.template.mergePolicy
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: observability
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
