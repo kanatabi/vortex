@@ -16,4 +16,5 @@ resources:
 - ingress.yaml
 images:
 - name: earendil
-  newName: earendil
+  newName: ghcr.io/kanatabi/earendil
+  newTag: v1.1.0
