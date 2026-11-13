@@ -7,3 +7,8 @@ kind: Kustomization
 resources:
   - ../../../applications/lumen
   - externalsecret.yaml
+
+# Single-node VPS shape (owner decision 2026-11-10): collapses the 2-replica
+# http-server anti-affinity pair. No selfsigned — real TLS via the certificates app.
+components:
+  - ../../../components/single-node

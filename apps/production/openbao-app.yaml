@@ -1,0 +1,24 @@
+# PRODUCTION hub (single VPS), wave 0: the vault itself. Healthy when the pod
+# runs; the kv stays EMPTY until the runbook init/unseal/AppRole/seed step —
+# and wave 2 will WAIT for that (see secrets-plane): the ordering is
+# structural, not a suggestion.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: openbao
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/kanatabi/vortex.git'
+    targetRevision: HEAD
+    path: overlays/production/openbao
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: secrets
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

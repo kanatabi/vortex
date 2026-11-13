@@ -1,0 +1,12 @@
+# Production (single VPS) view of meilisearch: the ESO-free base + placement
+# collapse. No env axis here — this is a platform service, configured identically
+# at every size (the master key arrives as a bootstrap Secret, §5.6 family,
+# exactly like the rehearsal shape).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../../applications/meilisearch
+
+components:
+  - ../../../components/single-node

@@ -1,0 +1,35 @@
+# App-of-apps hub, PRODUCTION-VPS variant — the entrypoint for the live estate
+# on one VPS. From a cloned vortex:
+#   kubectl apply -f bootstrap/apps-hub-production.yaml
+# Chicken-and-egg, the documented manual exception (same as apps-hub.yaml and
+# apps-hub-single-node.yaml): GitOps cannot bootstrap the cluster that hosts
+# its own root app, so the hub is applied BY HAND once and manages everything
+# under apps/production/ except itself.
+# Non-recursive sync of apps/production/ — the other hubs (path apps/ and
+# apps/single-node/) never see these CRs, and vice versa: exactly one hub may
+# own a cluster.
+# Deltas vs the single-node REHEARSAL hub: source paths land on
+# overlays/production/* — Bao values from kv/{app}/production and REAL ACME
+# TLS via the certificates app, never the selfsigned component.
+#   scale-out later:  delete this hub app, apply bootstrap/apps-hub.yaml,
+#                     relabel node-pools — placement returns via the bases.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: platform-apps-hub
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/kanatabi/vortex.git'
+    targetRevision: HEAD
+    path: apps/production/
+    directory:
+      recurse: false
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
