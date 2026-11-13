@@ -38,7 +38,7 @@ images:
   newTag: v2.2.0
 - name: mellon
   newName: ghcr.io/kanatabi/mellon
-  newTag: v1.1.0
+  newTag: v2.0.0
 
   # `ns mellon` is a CO-TENANT object — deleted here; rendered ONCE by
   # environments/foundation/lumen (see the full story in
