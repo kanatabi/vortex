@@ -40,7 +40,7 @@ images:
 
 patches:
   # `ns mellon` is a CO-TENANT object — deleted here; rendered ONCE by
-  # environments/foundation/lumen-admin (see the full story in
+  # environments/foundation/lumen (see the full story in
   # environments/staging/lumen/kustomization.yaml).
   - patch: |-
       $patch: delete

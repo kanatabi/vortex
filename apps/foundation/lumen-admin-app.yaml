@@ -18,7 +18,7 @@ spec:
   source:
     repoURL: 'https://github.com/kanatabi/vortex.git'
     targetRevision: HEAD
-    path: environments/foundation/lumen-admin
+    path: environments/foundation/lumen
   # ESO's webhook DEFAULTS these spec fields server-side (creationPolicy,
   # deletionPolicy, template engineVersion/mergePolicy) — they never exist
   # in Git, so without this the app is PERPETUALLY OutOfSync and selfHeal

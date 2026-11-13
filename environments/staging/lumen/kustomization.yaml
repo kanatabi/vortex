@@ -4,7 +4,9 @@
 # PER-ENV INDEX NAMES — LUMEN_MEILI_INDEX_* are values behind this overlay's
 # Bao path (kv/lumen/staging), never manifests. Staging pods therefore read:
 #   LUMEN_DB_URL  -> .../lumen-pg.db.svc/lumen_staging  (db_user_staging)
-#   LUMEN_ROLE=cms, LUMEN_ADMIN_URL -> the foundation lumen-admin Service.
+#   LUMEN_ROLE=cms inline (deployment IDENTITY, not config); LUMEN_ADMIN_URL
+#   rides the ES below — an in-cluster service URL is a VALUE, and the estate
+#   keeps those in Bao (LUMEN_MEILI_URL is the precedent).
 #
 # NAMING CONTRACT (sibling agents + vault seeding docs depend on this):
 # nameSuffix "-staging" + labels transformer omicron/env=staging. Resources
@@ -53,7 +55,7 @@ patches:
   # it): both env trees would render it with DIFFERENT omicron/env labels
   # and fight on every selfHeal pass. Ownership is therefore foundation-side
   # (applications/*/namespace.yaml is deleted out of every env-tree build;
-  # environments/foundation/lumen-admin renders all three app namespaces
+  # environments/foundation/lumen renders all three app namespaces
   # once, labeled omicron/env=shared — the truthful plane: shared plumbing).
   # $patch: delete runs before the labels transformer — so the Namespace
   # never sees one here.
@@ -89,10 +91,11 @@ patches:
         path: /spec/template/spec/containers/0/envFrom/0/secretRef/name
         value: lumen-secrets-staging
 
-  # CMS role: this fleet serves content staging reads/writes and calls the
-  # foundation admin API. LUMEN_ADMIN_URL is a STRUCTURAL service name
-  # (foundation, no suffix per contract) — deliberately inline, like PORT;
-  # the LUMEN_MEILI_INDEX_* entries ride the ES above (values from Bao).
+  # CMS role: deployment IDENTITY, deliberately inline (vault must never be
+  # able to silently re-role a fleet). LUMEN_ADMIN_URL is NOT inline — it is
+  # a config VALUE (service URL) and rides the ES above like every other
+  # in-cluster endpoint; the literal-ban battery stays strict (convergence
+  # ruling 2026-11-13: the exemption was NOT granted, the value moved).
   - target:
       kind: Deployment
       name: lumen-http-server
@@ -102,8 +105,6 @@ patches:
         value:
           - name: LUMEN_ROLE
             value: cms
-          - name: LUMEN_ADMIN_URL
-            value: http://lumen-admin.lumen.svc.cluster.local
   - target:
       kind: Deployment
       name: lumen-worker
@@ -113,8 +114,6 @@ patches:
         value:
           - name: LUMEN_ROLE
             value: cms
-          - name: LUMEN_ADMIN_URL
-            value: http://lumen-admin.lumen.svc.cluster.local
 
   # THE EPOCH TRIO — annotation value == gate --declared == ES annotation,
   # byte-equal ("0" — staging boots at epoch 0; the bump flow edits all

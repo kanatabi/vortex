@@ -26,7 +26,7 @@ components:
 # ones only THIS plane syncs (secrets, db, search, observability,
 # external-secrets) — labeling them cannot start a two-owner drift fight.
 # NOTE: the shared APP namespaces (lumen, earendil, mellon — co-tenanted by
-# staging and production) are foundation-owned in the lumen-admin overlay,
+# staging and production) are foundation-owned in the foundation lumen overlay,
 # rendered ONCE there with the plane label (two env trees stamping the same
 # Namespace with different values is a selfHeal fight; one owner is not).
 labels:
