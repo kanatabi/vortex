@@ -14,10 +14,10 @@
 # so that seeded value resolves. A stale unsuffixed value points at the
 # production fleet — the pair (manifest name, vault value) is the contract.
 #
-# nameSuffix does NOT rewrite spec fields (the kustomize trap): the ingress
-# backend name and the envFrom configMapRef are JSON6902-patched; the ES
-# target + Certificate secretName are AUTHORED final in this overlay's own
-# files. Patches target PRE-suffix names (patches run before suffix in
+# nameSuffix does NOT rewrite spec fields (the kustomize trap): the envFrom
+# configMapRef is JSON6902-patched; the ES target, the Certificate secretName
+# AND THE INGRESS are AUTHORED final in this overlay's own files. Patches
+# target PRE-suffix names (patches run before suffix in
 # kustomize v5.8.1 — verified).
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
@@ -28,6 +28,7 @@ nameSuffix: -staging
 resources:
 - ../../../applications/earendil
 - externalsecret.yaml
+- ingress.yaml
 
 components:
 - ../../../components/single-node
@@ -53,18 +54,13 @@ images:
   # environments/foundation/lumen (see the full story in
   # environments/staging/lumen/kustomization.yaml).
 
-  # TLS ownership, staging edition (same story as the production overlay):
-  # the explicit Certificate staging-gofar-id in applications/certificates
-  # renders tls-gofar-staging (one auditable cert list for the whole estate,
-  # synced by the production hub's certificates app — the staging Ingresses
-  # merely consume its Secret, exactly like production consumes tls-gofar);
-  # the base's ingress-shim annotation would double-issue a shadow
-  # Certificate for the SAME host against LE rate limits — removed.
-  # Rules are REPLACED wholesale (the base carries two www+apex hosts;
-  # staging owns exactly one). Backend name: kustomize's Service name
-  # reference would rewrite it anyway, but the contract demands the
-  # reference be EXPLICIT — a rename of the Service without its Ingress
-  # must fail review, not silently route staging at prod.
+  # TLS ownership -> the authored ingress.yaml, staging edition (same story
+  # as the production overlay): the explicit Certificate staging-gofar-id in
+  # applications/certificates renders tls-gofar-staging (one auditable cert
+  # list for the whole estate — the Ingress merely consumes its Secret,
+  # annotation-free so the ingress-shim can never double-issue). Backend
+  # name stated FINAL per the contract — a rename of the Service without
+  # its Ingress must fail review, not silently route staging at prod.
 
   # envFrom -> the suffixed ConfigMap this overlay's ES renders (target.name
   # is authored final in externalsecret.yaml; the reference here must match).
@@ -77,31 +73,6 @@ patches:
     kind: Namespace
     metadata:
       name: earendil
-- patch: |-
-    - op: remove
-      path: /metadata/annotations/cert-manager.io~1cluster-issuer
-    - op: replace
-      path: /spec/rules
-      value:
-        - host: staging.gofar.id
-          http:
-            paths:
-              - path: /
-                pathType: Prefix
-                backend:
-                  service:
-                    name: earendil-web-server-staging
-                    port:
-                      name: http
-    - op: replace
-      path: /spec/tls
-      value:
-        - secretName: tls-gofar-staging
-          hosts:
-            - staging.gofar.id
-  target:
-    kind: Ingress
-    name: earendil-web-server
 - patch: |-
     - op: replace
       path: /spec/template/spec/containers/0/envFrom/0/configMapRef/name

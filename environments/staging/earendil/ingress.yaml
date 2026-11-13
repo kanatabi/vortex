@@ -1,0 +1,39 @@
+# staging.gofar.id — the staging twin of surface #1. www is production-only
+# by owner ruling; staging owns exactly one host. AUTHORED FINAL in this
+# overlay (env-model ingress retirement): the base carries no Ingress
+# anymore — hosts, backend and TLS are written for staging; nameSuffix
+# rewrites only metadata.name.
+#
+# TLS: the explicit Certificate staging-gofar-id in applications/certificates
+# renders tls-gofar-staging — one auditable cert list for the whole estate,
+# synced by the production hub's certificates app; staging Ingresses merely
+# consume its Secret, exactly like production consumes tls-gofar. NO
+# cert-manager.io/cluster-issuer annotation ON PURPOSE: the ingress-shim
+# would double-issue a shadow Certificate for the SAME host against
+# Let's Encrypt rate limits.
+#
+# The backend service name is EXPLICIT (never left for kustomize's
+# name-reference rewrite): a rename of the Service without its Ingress must
+# fail review, not silently route staging at prod.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: earendil-web-server
+  namespace: earendil
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: staging.gofar.id
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: earendil-web-server-staging
+                port:
+                  name: http
+  tls:
+    - secretName: tls-gofar-staging
+      hosts:
+        - staging.gofar.id

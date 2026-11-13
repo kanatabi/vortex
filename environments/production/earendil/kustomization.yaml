@@ -10,11 +10,11 @@
 # (includeSelectors — env-restricted selectors are what make co-tenancy with
 # the staging fleet safe). nameSuffix rewrites metadata.name only, so every
 # name-bearing reference is explicit: envFrom configMapRef ->
-# app-config-production (patched), ES target.name authored final, the
-# Ingress backend stated final. The Ingress TLS Secret stays the UNSUFFIXED
-# tls-gofar — the certificates app is foundation-plane plumbing synced
-# un-suffixed from applications/certificates; suffixed Ingress names do not
-# imply suffixed certificate Secrets.
+# app-config-production (patched); the ES target AND the Ingress are
+# authored final in this overlay's own files. The Ingress TLS Secret stays
+# the UNSUFFIXED tls-gofar — the certificates app is foundation-plane
+# plumbing synced un-suffixed from applications/certificates; suffixed
+# Ingress names do not imply suffixed certificate Secrets.
 #
 # VAULT-VALUE CONTRACT (seeding docs / runbook): kv/earendil/production
 # property API_BASE MUST be
@@ -29,6 +29,7 @@ nameSuffix: -production
 resources:
 - ../../../applications/earendil
 - externalsecret.yaml
+- ingress.yaml
 
 components:
 - ../../../components/single-node
@@ -50,17 +51,14 @@ images:
   newName: ghcr.io/kanatabi/lumen
   newTag: v2.2.0
 
-# TLS ownership moves to the certificates app here (PR feat/certificates-app):
-# the explicit Certificate gofar-id renders Secret tls-gofar; the base's
-# cert-manager.io/cluster-issuer annotation would make the ingress-shim
-# auto-create a SHADOW Certificate (own name, own Secret) for the same
-# hostnames — double issuance against Let's Encrypt rate limits for one
-# serving door. So the prod overlay REMOVES the annotation (JSON6902, not a
-# strategic-merge null: typed map[string]string merges COERCE null to the
-# literal string "null") and re-points spec.tls at tls-gofar (annotation
-# gone => shim ignores the Ingress entirely; the Secret name match is the
-# whole binding). The rules keep BOTH production hosts (www + apex — staging
-# never wears www); the backend name is stated final per the naming contract.
+# TLS ownership -> the authored ingress.yaml (see that file for the full
+# story: the explicit Certificate gofar-id renders tls-gofar — UNSUFFIXED,
+# foundation-plane cert app — and it is annotation-free ON PURPOSE: the
+# ingress-shim would double-issue a shadow Certificate for the same
+# hostnames against LE rate limits; the Secret-name match is the whole
+# binding). Both production hosts ride in the authored rules (www + apex —
+# staging never wears www); the backend name is stated final per the
+# naming contract.
   # `ns earendil` is a CO-TENANT object — deleted here; foundation-owned
   # (environments/foundation/lumen; story in
   # environments/staging/lumen/kustomization.yaml).
@@ -79,42 +77,6 @@ patches:
     kind: Namespace
     metadata:
       name: earendil
-- patch: |-
-    - op: remove
-      path: /metadata/annotations/cert-manager.io~1cluster-issuer
-    - op: replace
-      path: /spec/rules
-      value:
-        - host: www.gofar.id
-          http:
-            paths:
-              - path: /
-                pathType: Prefix
-                backend:
-                  service:
-                    name: earendil-web-server-production
-                    port:
-                      name: http
-        - host: gofar.id
-          http:
-            paths:
-              - path: /
-                pathType: Prefix
-                backend:
-                  service:
-                    name: earendil-web-server-production
-                    port:
-                      name: http
-    - op: replace
-      path: /spec/tls
-      value:
-        - secretName: tls-gofar
-          hosts:
-            - gofar.id
-            - www.gofar.id
-  target:
-    kind: Ingress
-    name: earendil-web-server
 - patch: |-
     - op: replace
       path: /spec/template/spec/containers/0/envFrom/0/configMapRef/name
