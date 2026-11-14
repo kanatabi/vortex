@@ -75,6 +75,7 @@ spec:
             - secretRef: { name: grafana-secrets, optional: true }
           volumeMounts:
             - { name: datasources, mountPath: /etc/grafana/provisioning/datasources }
+            - { name: dashboards, mountPath: /etc/grafana/provisioning/dashboards }
             - { name: data, mountPath: /var/lib/grafana }
           readinessProbe:
             httpGet: { path: /api/health, port: http }
@@ -84,6 +85,8 @@ spec:
       volumes:
         - name: datasources
           configMap: { name: grafana-datasources }
+        - name: dashboards
+          configMap: { name: grafana-dashboards }
         - name: data
           persistentVolumeClaim: { claimName: grafana }
 ---
