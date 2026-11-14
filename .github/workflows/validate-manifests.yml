@@ -21,6 +21,6 @@ jobs:
         with:
           fetch-depth: 0
       - name: anvil validate-manifests
-        uses: kanatabi/anvil/actions/validate-manifests@a8f1d119e728cce115c20fe7425245c9a1e40d1c # stateless loss-baseline validator (table retired)
+        uses: kanatabi/anvil/actions/validate-manifests@6e210f5c232a17273d59da7766fbb9f5d2d25d56 # guarded push/create + optional-tag dispatch
         with:
           base-ref: ${{ github.event.pull_request.base.sha || 'origin/main' }}
