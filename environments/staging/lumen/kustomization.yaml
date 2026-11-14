@@ -55,7 +55,7 @@ components:
 images:
 - name: lumen
   newName: ghcr.io/kanatabi/lumen
-  newTag: v3.0.0
+  newTag: v4.0.1
 
   # `ns lumen` is a CO-TENANT object (staging + production workloads share
   # it): both env trees would render it with DIFFERENT omicron/env labels
@@ -80,8 +80,6 @@ images:
   # byte-equal ("0" — staging boots at epoch 0; the bump flow edits all
   # three lines in one commit, CI asserts the pair).
       # Full-args replacement (never element-wise) — see component header.
-    # Full-args replacement (never element-wise) — see component header.
-    # Full-args replacement (never element-wise) — see component header.
     # Full-args replacement (never element-wise) — see component header.
 patches:
 - patch: |-
