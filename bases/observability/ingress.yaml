@@ -9,6 +9,14 @@ kind: Ingress
 metadata:
   name: grafana
   namespace: observability
+  annotations:
+    # LAST WAVE, deliberately: on k3d (no load-balancer assignment) an
+    # Ingress is PERMANENTLY Degraded (empty status.loadBalancer — walked
+    # 2026-11-14), and a wave-0 Ingress holds every sync operation open
+    # forever ("waiting for healthy state"), wedging the whole app. In the
+    # last wave nothing waits behind it; the door itself wakes on the real
+    # VPS in ch. 07.
+    argocd.argoproj.io/sync-wave: "3"
 spec:
   ingressClassName: traefik
   rules:

@@ -80,7 +80,7 @@ spec:
       enableServiceLinks: false   # no legacy docker-style service env injection into app pods
       containers:
         - name: loki
-          image: grafana/loki:3.1.0
+          image: loki                     # placeholder — the env tree pins the version
           args: [-config.file=/etc/loki/loki.yaml]
           ports:
             - { containerPort: 3100, name: http }

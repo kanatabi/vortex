@@ -25,7 +25,7 @@ spec:
       enableServiceLinks: false   # no legacy docker-style service env injection into app pods
       containers:
         - name: alloy
-          image: grafana/alloy:v1.4.0
+          image: alloy                    # placeholder — the env tree pins the version
           args:
             - run
             - /etc/alloy/config.alloy

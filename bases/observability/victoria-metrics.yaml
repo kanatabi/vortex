@@ -29,7 +29,7 @@ spec:
       enableServiceLinks: false   # no legacy docker-style service env injection into app pods
       containers:
         - name: victoria-metrics
-          image: victoriametrics/victoria-metrics:v1.106.1
+          image: victoria-metrics         # placeholder — the env tree pins the version
           args:
             - --storageDataPath=/storage
             - --retentionPeriod=30d     # matches §1 sizing; raise later w/ disk headroom
