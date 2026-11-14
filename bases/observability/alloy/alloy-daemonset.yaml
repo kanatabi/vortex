@@ -3,6 +3,8 @@ kind: DaemonSet
 metadata:
   name: alloy
   labels: { app: alloy }
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"   # last: it PUSHES to loki + victoria (wave 2 stores) — endpoints first
 spec:
   selector:
     matchLabels: { app: alloy }
