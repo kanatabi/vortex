@@ -44,6 +44,12 @@ spec:
           image: lumen
           imagePullPolicy: IfNotPresent
           args: ["migrate"]
+          env:
+            # migrate is LUMEN_ROLE-aware (v3.0.0 role split): without the
+            # role it runs the legacy 'all' subset. This job is lumen-only
+            # and every consumer overlay is a cms plane — identity, not config.
+            - name: LUMEN_ROLE
+              value: cms
           envFrom:
             # optional:true: a missing Secret yields lumen's own loud config
             # error (clean Job failure, blocked sync) instead of an opaque

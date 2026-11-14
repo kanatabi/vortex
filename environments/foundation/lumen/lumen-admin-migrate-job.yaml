@@ -42,6 +42,12 @@ spec:
           image: lumen
           imagePullPolicy: IfNotPresent
           args: ["migrate"]
+          env:
+            # migrate is LUMEN_ROLE-aware (v3.0.0 role split): without the
+            # role it runs the legacy 'all' subset — cms tables would land
+            # in lumen_admin. Same inline identity as the deployment.
+            - name: LUMEN_ROLE
+              value: admin
           envFrom:
             # optional:true — a missing Secret yields lumen's own loud config
             # error (clean Job failure, blocked sync), not an opaque
