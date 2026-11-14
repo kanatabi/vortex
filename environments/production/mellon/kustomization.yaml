@@ -34,10 +34,10 @@ components:
 images:
 - name: lumen
   newName: ghcr.io/kanatabi/lumen
-  newTag: v2.2.0
+  newTag: v3.0.0
 - name: mellon
   newName: ghcr.io/kanatabi/mellon
-  newTag: v1.1.0
+  newTag: v2.0.0
 
   # `ns mellon` is a CO-TENANT object — deleted here; foundation-owned
   # (environments/foundation/lumen; story in
@@ -53,6 +53,7 @@ images:
 
   # THE EPOCH TRIO — annotation == --declared == ES annotation ("0").
       # Full-args replacement (never element-wise) — see component header.
+    # Full-args replacement (never element-wise) — see component header.
 patches:
 - patch: |-
     $patch: delete
