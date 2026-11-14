@@ -18,3 +18,9 @@ resources:
   # to Grafana defaults, never a failed sync.
   - externalsecret.yaml
   - ingress.yaml
+  # Provisioned dashboards (provider + the Estate overview) — explicit listing
+  # is load-bearing: kustomize renders ONLY the files named here, and an
+  # unlisted new file silently vanishes from every render (walked 2026-11-14:
+  # the deployment referenced grafana-dashboards before this entry existed —
+  # FailedMount loop, sync "waiting for healthy state of Deployment/grafana").
+  - dashboards.yaml
