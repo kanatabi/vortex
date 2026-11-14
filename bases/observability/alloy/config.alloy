@@ -30,23 +30,59 @@ loki.source.syslog "master" {
     forward_to = [loki.write.loki.receiver]
 }
 
-// ================= metrics: kubelet + cAdvisor (covers master too) =================
-// Scrape every node's kubelet over its InternalIP:10250 with the pod's SA bearer;
-// k3s certs are self-signed. This is how the agentless master gets full coverage.
+// ================= metrics: kubelet + cAdvisor (via the API-server proxy) =================
+// The scrape rides the Kubernetes API-server proxy —
+//   kubernetes.default.svc.cluster.local:443 + /api/v1/nodes/<node>/proxy/metrics[.../cadvisor]
+// — instead of dialing each node's InternalIP:10250. Walked 2026-11-14 on k3d:
+// direct node dialing was up=0 for EVERY target while the same namespace could
+// reach pod endpoints fine (cert-manager:9402 -> HTTP 200 from a sibling pod);
+// the proxy path works from ANY pod that holds `nodes/proxy` (the alloy
+// ClusterRole does — verified via can-i impersonation) with zero node-network
+// reachability, and is identical on k3d and the real VPS. The SA bearer doubles
+// as the proxy's auth (kubelet webhook authz maps to nodes/proxy).
 // RIVER SYNTAX NOTE (walked 2026-11-14): block BODIES are newline-separated —
 // comma-joined attributes (`rule { a = 1, b = 2 }`) are a parse error
 // ("expected TERMINATOR, got ,"), and one such line kept the whole DaemonSet
 // in CrashLoopBackOff for 6h. Only attribute-VALUE object literals
 // (`authorization = { x = 1, y = 2 }`) may use commas. One attribute per line.
+// RELABEL DEFAULT GOTCHA (walked 2026-11-14): `replacement` defaults to "$1" —
+// a multi-capture rule that omits it silently DISCARDS capture 2+ (the
+// annotated-pod port rewrite lost :9402/:9090/:3000 and scraped port 80, up=0
+// across the board). Always spell replacement out.
 discovery.kubernetes "nodes" { role = "node" }
 discovery.relabel "kubelet" {
     targets = discovery.kubernetes.nodes.targets
     rule {
     action        = "replace"
-    source_labels = ["__meta_kubernetes_node_address_InternalIP"]
-    regex         = "(.+)"
     target_label  = "__address__"
-    replacement   = "${1}:10250"
+    replacement   = "kubernetes.default.svc.cluster.local:443"
+    }
+    rule {
+    action        = "replace"
+    source_labels = ["__meta_kubernetes_node_name"]
+    regex         = "(.+)"
+    target_label  = "__metrics_path__"
+    replacement   = "/api/v1/nodes/${1}/proxy/metrics"
+    }
+    rule {
+    action        = "replace"
+    target_label  = "node"
+    source_labels = ["__meta_kubernetes_node_name"]
+    }
+}
+discovery.relabel "cadvisor" {
+    targets = discovery.kubernetes.nodes.targets
+    rule {
+    action        = "replace"
+    target_label  = "__address__"
+    replacement   = "kubernetes.default.svc.cluster.local:443"
+    }
+    rule {
+    action        = "replace"
+    source_labels = ["__meta_kubernetes_node_name"]
+    regex         = "(.+)"
+    target_label  = "__metrics_path__"
+    replacement   = "/api/v1/nodes/${1}/proxy/metrics/cadvisor"
     }
     rule {
     action        = "replace"
@@ -57,24 +93,30 @@ discovery.relabel "kubelet" {
 prometheus.scrape "kubelet" {
     targets       = discovery.relabel.kubelet.output
     scheme        = "https"
-    metrics_path  = "/metrics"
+    metrics_path  = "/metrics"   // default; __metrics_path__ from the relabel wins per-target
     authorization {
         type             = "Bearer"
         credentials_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
     }
-    tls_config { insecure_skip_verify = true }
+    tls_config {
+        ca_file     = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+        server_name = "kubernetes.default.svc.cluster.local"
+    }
     forward_to    = [prometheus.remote_write.vm.receiver]
     job_name      = "kubelet"
 }
 prometheus.scrape "cadvisor" {
-    targets       = discovery.relabel.kubelet.output
+    targets       = discovery.relabel.cadvisor.output
     scheme        = "https"
-    metrics_path  = "/metrics/cadvisor"
+    metrics_path  = "/metrics"   // default; __metrics_path__ from the relabel wins per-target
     authorization {
         type             = "Bearer"
         credentials_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
     }
-    tls_config { insecure_skip_verify = true }
+    tls_config {
+        ca_file     = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+        server_name = "kubernetes.default.svc.cluster.local"
+    }
     forward_to    = [prometheus.remote_write.vm.receiver]
     job_name      = "cadvisor"
 }
@@ -109,6 +151,10 @@ discovery.relabel "pod_metrics" {
     separator     = ";"
     source_labels = ["__address__", "__meta_kubernetes_pod_annotation_prometheus_io_port"]
     target_label  = "__address__"
+    replacement   = "$1:$2"
+    // Replacement is SPELLED OUT deliberately: the "$1" DEFAULT silently
+    // drops capture 2 (the port) — the target then scrapes port 80 and
+    // every annotated pod reported up=0 (walked 2026-11-14).
     }
     rule {
     action       = "labelmap"
