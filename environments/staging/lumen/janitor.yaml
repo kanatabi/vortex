@@ -1,0 +1,83 @@
+# The migrate corpse's JANITOR. Job pod templates are IMMUTABLE — an image
+# bump can't patch the COMPLETED migrate Job, so Argo retries "field is
+# immutable" until the retries exhaust, blocking wave 2 behind it (walked
+# 2026-11-14). This PreSync hook deletes the corpse BEFORE the sync-phase
+# applies the bumped Job — which is then CREATED fresh on the new tag.
+# --ignore-not-found: fresh clusters (and corpse-free syncs) no-op cleanly,
+# so this is walk-safe where migrate-as-hook was not (no secrets needed).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: lumen-migrate-janitor
+  labels:
+    app: lumen-migrate-janitor
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    # runs before the gate Job (weight 0); its own RBAC trio lands at -3
+    argocd.argoproj.io/hook-weight: "-2"
+spec:
+  backoffLimit: 2
+  activeDeadlineSeconds: 60
+  template:
+    metadata:
+      labels:
+        app: lumen-migrate-janitor
+    spec:
+      # SPEC fields don't get the nameSuffix — pinned to the rendered name
+      serviceAccountName: lumen-janitor-staging
+      restartPolicy: Never
+      containers:
+        - name: janitor
+          # kubectl pinned to the server's minor (k3s v1.35.5) — zero skew
+          image: registry.k8s.io/kubectl:v1.35.5
+          command: ["/bin/kubectl", "delete", "job", "lumen-migrate-staging", "--ignore-not-found"]
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits: { cpu: 100m, memory: 64Mi }
+---
+# The janitor's RBAC — ALSO hooks (-3): resources a hook needs must exist
+# BEFORE the hook runs (the config-gate lesson: its SA needed a manual
+# `kubectl create serviceaccount` until this pattern landed).
+# metadata.names get -staging from nameSuffix; the binding/pod-spec refs
+# above/below are LITERAL (spec fields don't).
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: lumen-janitor
+  labels:
+    app: lumen-migrate-janitor
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-weight: "-3"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: lumen-janitor
+  labels:
+    app: lumen-migrate-janitor
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-weight: "-3"
+rules:
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: lumen-janitor
+  labels:
+    app: lumen-migrate-janitor
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-weight: "-3"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: lumen-janitor-staging
+subjects:
+  - kind: ServiceAccount
+    name: lumen-janitor-staging
+    namespace: lumen

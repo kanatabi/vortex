@@ -10,6 +10,7 @@ kind: Kustomization
 namespace: earendil
 
 resources:
+- serviceaccount.yaml
 - namespace.yaml
 - deployment.yaml
 - service.yaml

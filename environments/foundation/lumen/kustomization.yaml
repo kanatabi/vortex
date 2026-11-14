@@ -34,6 +34,8 @@ kind: Kustomization
   # DELETE their copies ($patch: delete) and this single foundation overlay
   # renders them once — before the app hubs apply, structurally.
 resources:
+- janitor.yaml
+- serviceaccount.yaml
 - namespaces.yaml
 - lumen-admin-deployment.yaml
 - lumen-admin-service.yaml

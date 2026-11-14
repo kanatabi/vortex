@@ -25,6 +25,7 @@ namespace: lumen
 nameSuffix: -production
 
 resources:
+- janitor.yaml
 - ../../../bases/lumen
 - externalsecret.yaml
 
@@ -133,6 +134,27 @@ patches:
       value: ["config", "check-epoch", "--app", "lumen", "--env", "production", "--declared", "7"]
   target:
     kind: Job
+    name: config-gate
+# nameSuffix leaves SPEC fields alone (the trap noted at the top): the
+# gate hook's pod spec and the binding's refs stay LITERAL — pinned to
+# the suffix THIS tree renders (SA/Role metadata.names get it from
+# nameSuffix).
+- patch: |-
+    - op: replace
+      path: /spec/template/spec/serviceAccountName
+      value: config-gate-production
+  target:
+    kind: Job
+    name: config-gate
+- patch: |-
+    - op: replace
+      path: /roleRef/name
+      value: config-gate-production
+    - op: replace
+      path: /subjects/0/name
+      value: config-gate-production
+  target:
+    kind: RoleBinding
     name: config-gate
 
     # selectors participate — co-tenancy with staging in ONE namespace only

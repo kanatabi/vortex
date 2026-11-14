@@ -4,6 +4,7 @@ kind: Kustomization
 namespace: search
 
 resources:
+  - serviceaccount.yaml
   - namespace.yaml
   - deployment.yaml
   - pvc.yaml

@@ -1,0 +1,73 @@
+# The ADMIN migrate corpse's JANITOR — same design as the cms trees'
+# janitors (walked 2026-11-14: Job pod templates are immutable; the
+# PreSync hook deletes the completed corpse BEFORE the sync-phase applies
+# the bumped Job, which is then created fresh). Foundation renders NO
+# nameSuffix — every name here is literal.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: lumen-admin-migrate-janitor
+  labels:
+    app: lumen-admin-migrate-janitor
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-weight: "-2"
+spec:
+  backoffLimit: 2
+  activeDeadlineSeconds: 60
+  template:
+    metadata:
+      labels:
+        app: lumen-admin-migrate-janitor
+    spec:
+      serviceAccountName: lumen-janitor
+      restartPolicy: Never
+      containers:
+        - name: janitor
+          image: registry.k8s.io/kubectl:v1.35.5
+          command: ["/bin/kubectl", "delete", "job", "lumen-admin-migrate", "--ignore-not-found"]
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits: { cpu: 100m, memory: 64Mi }
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: lumen-janitor
+  labels:
+    app: lumen-admin-migrate-janitor
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-weight: "-3"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: lumen-janitor
+  labels:
+    app: lumen-admin-migrate-janitor
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-weight: "-3"
+rules:
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: lumen-janitor
+  labels:
+    app: lumen-admin-migrate-janitor
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-weight: "-3"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: lumen-janitor
+subjects:
+  - kind: ServiceAccount
+    name: lumen-janitor
+    namespace: lumen
