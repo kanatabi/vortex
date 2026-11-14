@@ -79,8 +79,8 @@ spec:
           readinessProbe:
             httpGet: { path: /api/health, port: http }
           resources:
-            requests: { cpu: 100m, memory: 128Mi }
-            limits: { cpu: 300m, memory: 256Mi }
+            requests: { cpu: 150m, memory: 256Mi }
+            limits: { cpu: 500m, memory: 512Mi }   # grafana 13 OOMKilled at 256Mi (walked 2026-11-14)
       volumes:
         - name: datasources
           configMap: { name: grafana-datasources }
