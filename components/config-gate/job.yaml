@@ -44,6 +44,17 @@ spec:
           image: lumen
           imagePullPolicy: IfNotPresent
           args: ["config", "check-epoch", "--app", "OVERLAY-MUST-REPLACE", "--env", "production", "--declared", "0"]
+          # The gate IS a vault client (bao.New): without this binding every
+          # gate run exits 2 "plane unreachable" and its app's sync dies —
+          # walked 2026-11-14 (lumen-admin unborn on the fresh k3d cluster).
+          # The Secret is the §5.6 bootstrap-paradox family member, created
+          # by hand in EVERY namespace that hosts a gated app (runbook 05
+          # §3.5): lumen, earendil, mellon, …
+          envFrom:
+            - secretRef:
+                name: lumen-bao-credentials
+                optional: true   # parity with every binding; a missing Secret
+                                 # stays the gate's own exit-2 verdict
           resources:
             requests: { cpu: 50m, memory: 64Mi }
             limits: { cpu: 300m, memory: 128Mi }
