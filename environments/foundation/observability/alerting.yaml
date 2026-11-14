@@ -8,11 +8,13 @@
 # so the email below receives all five rules (simplest shape that renders valid
 # provisioning YAML; a routing tree is a later, deliberate upgrade).
 #
-# Inert-by-design doctrine (mirrors the backup rule the brief calls out): every
-# rule here is written against its TARGET metric name; where the exporter does
-# not exist in-cluster yet, VictoriaMetrics returns no series, noDataState: OK
-# keeps the rule green — the rules are harmless today and light up the moment
-# their source lands, with zero further Git change.
+# Doctrine (mirrors the backup rule the brief calls out): every rule here is
+# written against its TARGET metric name; where the exporter does not exist
+# in-cluster yet, VictoriaMetrics returns no series and noDataState: OK keeps
+# the rule green — harmless today, alive the moment its source lands, zero
+# further Git change. A rule whose source IS live may flip noDataState to
+# ALERT instead: a silently-dead scrape must not hide a real condition
+# (rule 1, 2026-11-15 — see its comment for the walked re-point).
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -51,16 +53,26 @@ data:
       folderRef: estate
       interval: 5m
       rules:
-        # 1) TLS leaves <21 days of validity. ASSUMPTION: cert-manager exposes
-        # certmanager_certificate_expiration_timestamp_seconds on its controller
-        # :8080/metrics; the pinned v1.16.2 install is NOT yet annotated for the
-        # Alloy pod-scrape contract -> rule inert until the annotation (or a
-        # ServiceMonitor) lands. 21d = 1814400s; the 30d renew window means a
-        # hit here = renewal is broken, not merely near.
-        - title: TLS certificate expires in under 21 days
+        # 1) k3s control-plane certificates leave <21 days of validity.
+        # WALKED 2026-11-15 (the old assumption died by evidence): the pinned
+        # cert-manager v1.16.2 exports NO per-certificate expiration gauge —
+        # no certmanager_certificate_expiration_timestamp_seconds in VM, only
+        # certmanager_clock_time_seconds* + certmanager_controller_sync_call_
+        # count. Re-pointed to a series that IS live: k3s_certificate_
+        # expiration_seconds, scraped by the kubelet job via the API-server
+        # proxy (one series per certificate: ~1y for leaf certs, ~10y for
+        # CAs). min() across them = the earliest expiry governs. k3s rotates
+        # its certs automatically (on restarts, <90d remaining), so a hit
+        # here means rotation is BROKEN — e.g. a node that never restarts or
+        # a stuck clock — not merely near. noDataState: ALERT (live source:
+        # a dead kubelet scrape must not hide expiry; `for: 30m` absorbs
+        # brief Alloy restarts). STILL OPEN (Phase 5 backlog): the PUBLIC
+        # door certs (LE-issued: anor / console / blog) have no in-cluster
+        # gauge — they want a blackbox prober on the doors. 21d = 1814400s.
+        - title: k3s control-plane certificate expires in under 21 days
           condition: A
           for: 30m
-          noDataState: OK
+          noDataState: Alert
           errorState: OK
           data:
             - refId: A
@@ -71,7 +83,7 @@ data:
                 instant: true
                 intervalMs: 60000
                 maxDataPoints: 60
-                expr: '(certmanager_certificate_expiration_timestamp_seconds - time()) < 1814400'
+                expr: '(min(k3s_certificate_expiration_seconds) - time()) < 1814400'
         # 2) Backups stale > 36h. ASSUMPTION (documented in the brief): the
         # metric backup_last_success_timestamp_seconds is EXPORTED BY THE ch-M6
         # RESTIC TIMER once it exists; until then no series -> NoData -> OK.
