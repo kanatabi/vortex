@@ -5,12 +5,18 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   annotations:
-    # The hook's own RBAC must exist BEFORE the hook runs (walked
-    # 2026-11-14): as sync-phase resources the SA only came into being
-    # after the gate hook needed it — the manual `kubectl create
-    # serviceaccount config-gate` workaround is retired by this.
+    # The hook's own RBAC must exist BEFORE the hook runs. First attempt
+    # (2026-11-14) annotated `argocd.argoproj.io/hook-weight` — an
+    # annotation Argo CD DOES NOT HAVE (the Helm alias `helm.sh/hook-weight`
+    # maps to sync-wave; an argocd-prefixed hook-weight is silently
+    # IGNORED, the object lands at wave 0, and the gate Job — a real
+    # sync-wave -1 — sorted first: the 2026-11-15 production-hub apply
+    # wedged on `serviceaccount "config-gate-production" not found`; the
+    # 11-14 walk had been saved only by the manual kubectl-create
+    # workaround). The real ordering key is `sync-wave`; -2 sorts this
+    # RBAC before its Job's -1. (Actually walked 2026-11-15.)
     argocd.argoproj.io/hook: PreSync
-    argocd.argoproj.io/hook-weight: "-1"
+    argocd.argoproj.io/sync-wave: "-2"
   name: config-gate
   labels:
     app: config-gate

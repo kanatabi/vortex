@@ -13,8 +13,12 @@ metadata:
     app: lumen-migrate-janitor
   annotations:
     argocd.argoproj.io/hook: PreSync
-    # runs before the gate Job (weight 0); its own RBAC trio lands at -3
-    argocd.argoproj.io/hook-weight: "-2"
+    # runs before the gate Job (sync-wave -1); its own RBAC trio lands at -4.
+    # ORDERING KEY IS SYNC-WAVE: `argocd.argoproj.io/hook-weight` is NOT an Argo
+    # annotation (Helm's helm.sh/hook-weight is the mapped alias) — it was silently
+    # ignored, landing these hooks at wave 0 AFTER the Job they serve (walked 2026-11-15,
+    # the config-gate-production wedge).
+    argocd.argoproj.io/sync-wave: "-3"
 spec:
   backoffLimit: 2
   activeDeadlineSeconds: 60
@@ -35,9 +39,11 @@ spec:
             requests: { cpu: 10m, memory: 32Mi }
             limits: { cpu: 100m, memory: 64Mi }
 ---
-# The janitor's RBAC — ALSO hooks (-3): resources a hook needs must exist
-# BEFORE the hook runs (the config-gate lesson: its SA needed a manual
-# `kubectl create serviceaccount` until this pattern landed).
+# The janitor's RBAC — ALSO hooks (-4, BELOW their Job's -3): resources a
+# hook needs must exist BEFORE the hook runs. The ordering annotation is
+# SYNC-WAVE — `argocd.argoproj.io/hook-weight` (used here 2026-11-14) is
+# not an Argo annotation and was silently ignored, so the RBAC landed at
+# wave 0 while the Job ran at -1 (walked 2026-11-15).
 # metadata.names get -production from nameSuffix; the binding/pod-spec refs
 # above/below are LITERAL (spec fields don't).
 apiVersion: v1
@@ -48,7 +54,7 @@ metadata:
     app: lumen-migrate-janitor
   annotations:
     argocd.argoproj.io/hook: PreSync
-    argocd.argoproj.io/hook-weight: "-3"
+    argocd.argoproj.io/sync-wave: "-4"
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -58,7 +64,7 @@ metadata:
     app: lumen-migrate-janitor
   annotations:
     argocd.argoproj.io/hook: PreSync
-    argocd.argoproj.io/hook-weight: "-3"
+    argocd.argoproj.io/sync-wave: "-4"
 rules:
   - apiGroups: ["batch"]
     resources: ["jobs"]
@@ -72,7 +78,7 @@ metadata:
     app: lumen-migrate-janitor
   annotations:
     argocd.argoproj.io/hook: PreSync
-    argocd.argoproj.io/hook-weight: "-3"
+    argocd.argoproj.io/sync-wave: "-4"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
