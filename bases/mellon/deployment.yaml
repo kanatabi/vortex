@@ -8,6 +8,8 @@ kind: Deployment
 metadata:
   name: mellon-web-server
   namespace: mellon
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"   # after the ES (wave 0) renders — never boots dark
   labels:
     app: mellon-web-server
 spec:

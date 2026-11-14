@@ -13,8 +13,11 @@ metadata:
   labels:
     app: lumen-admin-migrate
   annotations:
-    argocd.argoproj.io/hook: PreSync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
+    # NOT a PreSync hook (walked 2026-11-14): a hook runs BEFORE the sync
+    # applies the admin-secrets ES — the Secret can't exist yet, so the
+    # migrate deadlocked on every fresh cluster. Wave ordering instead:
+    # ES (wave 0) must be Healthy (ESO-rendered) before wave 1 runs.
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   backoffLimit: 3
   activeDeadlineSeconds: 300
