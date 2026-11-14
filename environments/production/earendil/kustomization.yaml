@@ -46,7 +46,7 @@ components:
 images:
 - name: earendil
   newName: ghcr.io/kanatabi/earendil
-  newTag: v1.1.0
+  newTag: v1.2.0
 - name: lumen
   newName: ghcr.io/kanatabi/lumen
   newTag: v4.0.1
@@ -70,6 +70,7 @@ images:
   # THE EPOCH TRIO — annotation == --declared == ES annotation ("0"); the
   # bump flow edits all three lines in one commit (CI asserts equality).
       # Full-args replacement (never element-wise) — see component header.
+    # Full-args replacement (never element-wise) — see component header.
 patches:
 - patch: |-
     $patch: delete
