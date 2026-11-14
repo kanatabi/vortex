@@ -300,6 +300,20 @@ The release ladder and bump mechanics are owned by the
 
 ## 9. Hard-won traps (each cost real debugging — don't regress)
 
+0. **`argocd.argoproj.io/hook-weight` is NOT an Argo annotation.** Argo CD
+   orders resources within a phase by `argocd.argoproj.io/sync-wave` (Helm's
+   `helm.sh/hook-weight` maps onto it for Helm sources; an argocd-prefixed
+   `hook-weight` is silently IGNORED — the object lands at wave 0). The
+   config-gate's RBAC trio + the janitor's Job/RBAC carried it: the gate Job
+   (sync-wave -1) sorted BEFORE its own ServiceAccount (implicit wave 0) and
+   the 2026-11-15 production-hub apply wedged on `serviceaccount
+   "config-gate-production" not found` in all three app namespaces — the
+   11-14 walk had been saved by the manual kubectl-create workaround, not
+   the annotation. Fix (`e817cf8`): RBAC rides PreSync at sync-wave -2 (gate)
+   / -4 (janitor), their Jobs at -1 / -3. THE LESSON: an annotation that
+   "fixes" ordering must be verified against Argo's syncResult, not assumed
+   — a hook-resource fix that never applied looks identical to one that did,
+   until the next fresh-cluster apply.
 1. **A base `images:` stanza outranks every env overlay** in kustomize's override
    order — that's why bases carry NO image pins (2026-11-13 convergence,
    fixture-proven); env trees are the only version homes.
