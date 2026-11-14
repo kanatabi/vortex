@@ -40,15 +40,14 @@ data:
       working_directory: /loki/compactor
       retention_enabled: true
       delete_request_store: filesystem
-    # These two rings do NOT inherit common.ring — their pkg/kv default is
-    # consul@localhost:8500 and each kept the binary dead on its own turn
-    # (walked 2026-11-14: fix common -> scheduler ring failed next; the
-    # boot fails on the FIRST unhappy ring, so the crash log reveals them
-    # one at a time).
+    # The scheduler ring does NOT inherit common.ring and — Loki 3.x —
+    # scheduler.Config has NO `ring` field at all: the monolithic switch is
+    # use_scheduler_ring=false (walked 2026-11-14: `field ring not found in
+    # type scheduler.Config`). ruler.ring is real and still needs its
+    # explicit inmemory (pkg/kv defaults to consul@localhost:8500 — a store
+    # this estate has never run).
     query_scheduler:
-      ring:
-        kvstore:
-          store: inmemory
+      use_scheduler_ring: false
     ruler:
       ring:
         kvstore:
