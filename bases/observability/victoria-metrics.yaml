@@ -13,6 +13,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: victoria-metrics
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"   # after the ES (wave 0) renders — never boots dark
   labels: { app: victoria-metrics }
 spec:
   replicas: 1

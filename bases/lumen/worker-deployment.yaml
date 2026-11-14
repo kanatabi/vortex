@@ -6,6 +6,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: lumen-worker
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"   # after migrate (wave 1) — never boots dark
   namespace: lumen
   labels:
     app: lumen-worker

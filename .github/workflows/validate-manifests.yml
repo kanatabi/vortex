@@ -21,6 +21,6 @@ jobs:
         with:
           fetch-depth: 0
       - name: anvil validate-manifests
-        uses: kanatabi/anvil/actions/validate-manifests@9ed0738f738385bfa7ed96daa3f49c8e6e171451 # bases/ rename: table keys + glob follow
+        uses: kanatabi/anvil/actions/validate-manifests@829fa28eeb50eaf46a2d8167555236be0f232366 # wave-doctrine assertions + fence/bot fixes
         with:
           base-ref: ${{ github.event.pull_request.base.sha || 'origin/main' }}

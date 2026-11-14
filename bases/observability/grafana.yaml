@@ -35,6 +35,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: grafana
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"   # after the ES (wave 0) renders — never boots dark
   labels: { app: grafana }
 spec:
   replicas: 1
