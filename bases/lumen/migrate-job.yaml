@@ -20,6 +20,12 @@ metadata:
     # applies the env ES — the Secret can't exist yet on a fresh cluster.
     # Wave ordering: ES (wave 0, overlay) Healthy -> migrate (wave 1).
     argocd.argoproj.io/sync-wave: "1"
+    # Bump-safe: Job pod templates are IMMUTABLE — an image bump (v3->v4)
+    # can't patch the completed Job, so Argo retries "field is immutable"
+    # forever (walked 2026-11-14, lumen-admin sync). Replace=true makes
+    # Argo delete + re-create on the next sync: the bumped image's migrate
+    # runs fresh; no manual corpse deletes, TTL timing no longer load-bearing.
+    argocd.argoproj.io/sync-options: Replace=true
 spec:
   backoffLimit: 3
   activeDeadlineSeconds: 300

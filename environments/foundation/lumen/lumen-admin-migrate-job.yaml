@@ -18,6 +18,12 @@ metadata:
     # migrate deadlocked on every fresh cluster. Wave ordering instead:
     # ES (wave 0) must be Healthy (ESO-rendered) before wave 1 runs.
     argocd.argoproj.io/sync-wave: "1"
+    # Bump-safe: Job pod templates are IMMUTABLE — an image bump (v3->v4)
+    # can't patch the completed Job, so Argo retries "field is immutable"
+    # forever (walked 2026-11-14, lumen-admin sync). Replace=true makes
+    # Argo delete + re-create on the next sync: the bumped image's migrate
+    # runs fresh; no manual corpse deletes, TTL timing no longer load-bearing.
+    argocd.argoproj.io/sync-options: Replace=true
 spec:
   backoffLimit: 3
   activeDeadlineSeconds: 300
