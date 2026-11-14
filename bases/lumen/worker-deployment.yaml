@@ -56,6 +56,9 @@ spec:
           # Secrets (DB creds, Meilisearch key) arrive via lumen-secrets: rendered
           # in-cluster by ESO from OpenBao in production overlays (INFRA doc §5);
           # optional in k3d/dev.
+          # queue consumer only — the split-role counterpart of the http-server
+          # (v3.0.0: the image CMD 'all' refuses a split LUMEN_ROLE)
+          args: ["worker"]
           envFrom:
             - secretRef:
                 name: lumen-secrets

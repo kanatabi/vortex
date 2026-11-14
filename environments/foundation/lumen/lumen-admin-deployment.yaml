@@ -59,6 +59,7 @@ spec:
           # arrive via lumen-admin-secrets (kv/lumen/shared — the ADMIN
           # identity's single feed, read by both cms tenants' writes).
           # The LUMEN_BAO_* trio stays the §5.6 k8s-manual family.
+          args: ["server"]
           env:
             - name: LUMEN_ROLE
               value: admin
