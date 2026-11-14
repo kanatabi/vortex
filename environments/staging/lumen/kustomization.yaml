@@ -82,6 +82,7 @@ images:
       # Full-args replacement (never element-wise) — see component header.
     # Full-args replacement (never element-wise) — see component header.
     # Full-args replacement (never element-wise) — see component header.
+    # Full-args replacement (never element-wise) — see component header.
 patches:
 - patch: |-
     $patch: delete
