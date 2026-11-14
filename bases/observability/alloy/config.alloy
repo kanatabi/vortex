@@ -23,13 +23,21 @@ loki.source.file "pod_logs" {
 // ================= master host logs: rsyslog forwarding lands here =================
 // master's /etc/rsyslog.d/50-omk3s.conf ships journald+daemon logs to :5514/udp
 loki.source.syslog "master" {
-    listener   { protocol = "udp" address = "0.0.0.0:5514" }
+    listener {
+        protocol = "udp"
+        address  = "0.0.0.0:5514"
+    }
     forward_to = [loki.write.loki.receiver]
 }
 
 // ================= metrics: kubelet + cAdvisor (covers master too) =================
 // Scrape every node's kubelet over its InternalIP:10250 with the pod's SA bearer;
 // k3s certs are self-signed. This is how the agentless master gets full coverage.
+// RIVER SYNTAX NOTE (walked 2026-11-14): block BODIES are newline-separated —
+// comma-joined attributes (`rule { a = 1, b = 2 }`) are a parse error
+// ("expected TERMINATOR, got ,"), and one such line kept the whole DaemonSet
+// in CrashLoopBackOff for 6h. Only attribute-VALUE object literals
+// (`authorization = { x = 1, y = 2 }`) may use commas. One attribute per line.
 discovery.kubernetes "nodes" { role = "node" }
 discovery.relabel "kubelet" {
     targets = discovery.kubernetes.nodes.targets
@@ -40,14 +48,21 @@ discovery.relabel "kubelet" {
     target_label  = "__address__"
     replacement   = "${1}:10250"
     }
-    rule { action = "replace", target_label = "node", source_labels = ["__meta_kubernetes_node_name"] }
+    rule {
+    action        = "replace"
+    target_label  = "node"
+    source_labels = ["__meta_kubernetes_node_name"]
+    }
 }
 prometheus.scrape "kubelet" {
     targets       = discovery.relabel.kubelet.output
     scheme        = "https"
     metrics_path  = "/metrics"
-    authorization = { type = "Bearer", credentials_file = "/var/run/secrets/kubernetes.io/serviceaccount/token" }
-    tls_config    = { insecure_skip_verify = true }
+    authorization {
+        type             = "Bearer"
+        credentials_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+    }
+    tls_config { insecure_skip_verify = true }
     forward_to    = [prometheus.remote_write.vm.receiver]
     job_name      = "kubelet"
 }
@@ -55,8 +70,11 @@ prometheus.scrape "cadvisor" {
     targets       = discovery.relabel.kubelet.output
     scheme        = "https"
     metrics_path  = "/metrics/cadvisor"
-    authorization = { type = "Bearer", credentials_file = "/var/run/secrets/kubernetes.io/serviceaccount/token" }
-    tls_config    = { insecure_skip_verify = true }
+    authorization {
+        type             = "Bearer"
+        credentials_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+    }
+    tls_config { insecure_skip_verify = true }
     forward_to    = [prometheus.remote_write.vm.receiver]
     job_name      = "cadvisor"
 }
@@ -74,17 +92,48 @@ prometheus.scrape "cadvisor" {
 discovery.kubernetes "pods" { role = "pod" }
 discovery.relabel "pod_metrics" {
     targets = discovery.kubernetes.pods.targets
-    rule { action = "keep", regex = "true", source_labels = ["__meta_kubernetes_pod_annotation_prometheus_io_scrape"] }
-    rule { action = "replace", regex = "(.+)", source_labels = ["__meta_kubernetes_pod_annotation_prometheus_io_path"], target_label = "__metrics_path__" }
-    rule { action = "replace", regex = "([^:]+)(?::\\d+)?;(\\d+)", separator = ";", source_labels = ["__address__", "__meta_kubernetes_pod_annotation_prometheus_io_port"], target_label = "__address__" }
-    rule { action = "labelmap", regex = "__meta_kubernetes_pod_label_(.+)" }
+    rule {
+    action       = "keep"
+    regex        = "true"
+    source_labels = ["__meta_kubernetes_pod_annotation_prometheus_io_scrape"]
+    }
+    rule {
+    action        = "replace"
+    regex         = "(.+)"
+    source_labels = ["__meta_kubernetes_pod_annotation_prometheus_io_path"]
+    target_label  = "__metrics_path__"
+    }
+    rule {
+    action        = "replace"
+    regex         = "([^:]+)(?::\\d+)?;(\\d+)"
+    separator     = ";"
+    source_labels = ["__address__", "__meta_kubernetes_pod_annotation_prometheus_io_port"]
+    target_label  = "__address__"
+    }
+    rule {
+    action       = "labelmap"
+    regex        = "__meta_kubernetes_pod_label_(.+)"
+    }
     // omicron/env -> env (meta-label sanitization: `omicron/env` becomes
     // `__meta_kubernetes_pod_label_omicron_env`; empty stays empty -> drop
     // the target_label rewrite when the source is missing is automatic for
     // replace with non-matching regex — the default rule keeps it absent).
-    rule { action = "replace", regex = "(.+)", source_labels = ["__meta_kubernetes_pod_label_omicron_env"], target_label = "env" }
-    rule { action = "replace", source_labels = ["__meta_kubernetes_namespace"], target_label = "namespace" }
-    rule { action = "replace", source_labels = ["__meta_kubernetes_pod_name"], target_label = "pod" }
+    rule {
+    action        = "replace"
+    regex         = "(.+)"
+    source_labels = ["__meta_kubernetes_pod_label_omicron_env"]
+    target_label  = "env"
+    }
+    rule {
+    action        = "replace"
+    source_labels = ["__meta_kubernetes_namespace"]
+    target_label  = "namespace"
+    }
+    rule {
+    action        = "replace"
+    source_labels = ["__meta_kubernetes_pod_name"]
+    target_label  = "pod"
+    }
 }
 prometheus.scrape "pod_metrics" {
     targets    = discovery.relabel.pod_metrics.output
@@ -96,13 +145,14 @@ prometheus.scrape "pod_metrics" {
 otelcol.receiver.otlp "in" {
     grpc { endpoint = "0.0.0.0:4317" }
     http { endpoint = "0.0.0.0:4318" }
-    metrics { output = otelcol.exporter.prometheus.m2vm.receiver }
-    logs    { output = otelcol.exporter.loki.m2loki.receiver }
     // traces intentionally absent: no Tempo (§1). Enable when/if a trace store exists.
+    output {
+        metrics = [otelcol.exporter.prometheus.m2vm.input]
+        logs    = [otelcol.exporter.loki.m2loki.input]
+    }
 }
 otelcol.exporter.prometheus "m2vm" {
-    add_job_labels = true
-    forward_to     = [prometheus.remote_write.vm.receiver]
+    forward_to = [prometheus.remote_write.vm.receiver]
 }
 otelcol.exporter.loki "m2loki" {
     forward_to = [loki.write.loki.receiver]
@@ -110,6 +160,9 @@ otelcol.exporter.loki "m2loki" {
 
 // ================= statsd door (kept closed; enable ~free) =================
 // statsd.exporter "in" {
-//   listen { host = "0.0.0.0", port = 9412 }
+//   listen {
+//     host = "0.0.0.0"
+//     port = 9412
+//   }
 //   forward_to = [prometheus.remote_write.vm.receiver]
 // }
