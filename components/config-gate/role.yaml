@@ -5,6 +5,13 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
+  annotations:
+    # The hook's own RBAC must exist BEFORE the hook runs (walked
+    # 2026-11-14): as sync-phase resources the SA only came into being
+    # after the gate hook needed it — the manual `kubectl create
+    # serviceaccount config-gate` workaround is retired by this.
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-weight: "-1"
   name: config-gate
   labels:
     app: config-gate

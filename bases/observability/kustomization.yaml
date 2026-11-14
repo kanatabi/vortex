@@ -4,6 +4,7 @@ kind: Kustomization
 namespace: observability
 
 resources:
+  - serviceaccount.yaml
   - namespace.yaml
   - victoria-metrics.yaml
   - loki.yaml
