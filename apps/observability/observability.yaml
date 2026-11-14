@@ -1,0 +1,48 @@
+# OBSERVABILITY app (VPS entrypoint #3), synced by its OWN hub
+# (bootstrap/apps-hub-observability.yaml) — a MANUAL GATE, applied only after
+# every precondition below holds. The hub's apply is the ordering now (the old
+# foundation wave-2 annotation is gone): a human reads this list, then applies.
+#   1. the foundation hub's apps are all Synced/Healthy (openbao, ESO,
+#      secrets-plane, lumen-db, meilisearch, lumen-admin);
+#   2. the ch.05 vault ritual is done (init/unseal/AppRole/seed);
+#   3. the §6.5 grafana four-key put into kv/grafana/production is VERIFIED —
+#      an ExternalSecret errors on any missing declared key, so a fresh apply
+#      before the seed wedges the sync op (see runbook ch.12 card 11).
+# The estate's only viewer: Alloy (DaemonSet) + Loki + VictoriaMetrics +
+# Grafana at anor.gofar.id, sized to the §1 VPS budget, alerting via the
+# provisioned five rules (PR history).
+# The ignoreDifferences block below STAYS (ESO's webhook defaults these spec
+# fields server-side — creationPolicy, deletionPolicy, template
+# engineVersion/mergePolicy; they never exist in Git, so without this the app
+# is PERPETUALLY OutOfSync and selfHeal would thrash the ES forever).
+# Discovered on the live walk 2026-11-10. Never delete it.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: observability
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/kanatabi/vortex.git'
+    targetRevision: HEAD
+    path: environments/foundation/observability
+  # ESO's webhook DEFAULTS these spec fields server-side (creationPolicy,
+  # deletionPolicy, template engineVersion/mergePolicy) — they never exist in
+  # Git, so without this the app is PERPETUALLY OutOfSync and selfHeal would
+  # thrash the ES forever. Discovered on the live walk 2026-11-10.
+  ignoreDifferences:
+    - group: external-secrets.io
+      kind: ExternalSecret
+      jqPathExpressions:
+        - .spec.target.creationPolicy
+        - .spec.target.deletionPolicy
+        - .spec.target.template.engineVersion
+        - .spec.target.template.mergePolicy
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: observability
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
