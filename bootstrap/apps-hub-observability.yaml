@@ -1,0 +1,33 @@
+# App-of-apps hub, OBSERVABILITY entrypoint (#3 of three) — the THIRD manual
+# apply in the VPS boot order: foundation hub → ch.05 vault ritual → grafana
+# four-key seed → THIS hub → the env hubs. Not GitOps-managed itself: the
+# documented manual bootstrap exception, the same class as
+# bootstrap/apps-hub-foundation.yaml (GitOps cannot bootstrap the cluster that
+# hosts its own root app). Its apply is a GATE, not a wave: run it only after
+# (a) the foundation hub's apps are Synced/Healthy, (b) the ch.05 vault ritual
+# is done, and (c) the §6.5 grafana four-key put is verified — an
+# ExternalSecret errors on any missing declared key, so a fresh apply before
+# the seed wedges the sync op (see runbook ch.12 card 11). The child CR at
+# apps/observability/observability.yaml carries the full checklist.
+# Non-recursive sync of apps/observability/ — only Application CRs live there,
+# so no environments/foundation/* overlay is ever swept up by accident.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: platform-apps-hub-observability
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/kanatabi/vortex.git'
+    targetRevision: HEAD
+    path: apps/observability/
+    directory:
+      recurse: false
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
