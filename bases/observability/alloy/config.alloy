@@ -8,16 +8,91 @@ loki.write "loki" {
 }
 
 // ================= pod logs: tail kubelet log files on this node =================
-local.file_match "pod_logs" {
-    path_targets = [{
-    __path__  = "/var/log/pods/*/*/*.log",
-    instance  = env("HOSTNAME"),
-    job       = "kubelet-pods",
-    }]
+// Targets come from Kubernetes discovery, not a bare glob. Walked 2026-11-14:
+// the old `/var/log/pods/*/*/*.log` glob gave every stream the SAME three
+// labels (job / instance / filename-with-uuid-path) — nothing was filterable,
+// and Grafana Explore showed only the chatty pods (argocd, postgres).
+// discovery.kubernetes "pods" (defined HERE; the metrics section below reuses
+// it for the annotated-pod scrape) carries every pod's metadata; the relabel
+// builds the per-pod log path from the pod's OWN uid + container name (the uid
+// means restarting pods never share a tail position) and stamps the estate's
+// LOG-LABEL CONTRACT onto every line: env, app, namespace, pod, container.
+// HOW TO ADD A LABEL: one replace rule copying
+// `__meta_kubernetes_pod_label_<x>` (dashes/dots in the label name become
+// underscores). System pods (argocd, kube-system, cert-manager) carry no
+// `omicron/env` label — their streams simply have no env label; `app` falls
+// back to `app.kubernetes.io/name` where the short `app` label is missing.
+discovery.kubernetes "pods" { role = "pod" }
+discovery.relabel "pod_logs" {
+    targets = discovery.kubernetes.pods.targets
+    // terminal-phase pods (completed Jobs) stop being tailed — their logs
+    // stay readable with kubectl logs.
+    rule {
+    action        = "drop"
+    regex         = "Pending|Succeeded|Failed|Completed"
+    source_labels = ["__meta_kubernetes_pod_phase"]
+    }
+    rule {
+    action       = "replace"
+    target_label = "job"
+    replacement  = "kubelet-pods"
+    }
+    rule {
+    action       = "replace"
+    target_label = "instance"
+    replacement  = env("HOSTNAME")
+    }
+    // /var/log/pods/<ns>_<pod>_<uid>/<container>/<n>.log
+    rule {
+    action        = "replace"
+    separator     = ";"
+    source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
+    regex         = "(.+);(.+)"
+    target_label  = "__path__"
+    replacement   = "/var/log/pods/*_${1}/${2}/*.log"
+    }
+    rule {
+    action        = "replace"
+    source_labels = ["__meta_kubernetes_namespace"]
+    target_label  = "namespace"
+    }
+    rule {
+    action        = "replace"
+    source_labels = ["__meta_kubernetes_pod_name"]
+    target_label  = "pod"
+    }
+    rule {
+    action        = "replace"
+    source_labels = ["__meta_kubernetes_pod_container_name"]
+    target_label  = "container"
+    }
+    rule {
+    action        = "replace"
+    regex         = "(.+)"
+    source_labels = ["__meta_kubernetes_pod_label_omicron_env"]
+    target_label  = "env"
+    }
+    rule {
+    action        = "replace"
+    regex         = "(.+)"
+    source_labels = ["__meta_kubernetes_pod_label_app"]
+    target_label  = "app"
+    }
+    rule {
+    action        = "replace"
+    regex         = "(.+)"
+    source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+    target_label  = "app"
+    }
 }
 loki.source.file "pod_logs" {
-    targets    = local.file_match.pod_logs.targets
+    targets    = discovery.relabel.pod_logs.output
     forward_to = [loki.write.loki.receiver]
+    // __path__ above is a per-pod GLOB, not a literal file — file_match
+    // expands it; without this block loki.source.file demands absolute paths.
+    file_match {
+    enabled = true
+    }
 }
 
 // ================= master host logs: rsyslog forwarding lands here =================
@@ -173,7 +248,10 @@ prometheus.scrape "noderes" {
 // The env trees are what make this true; Grafana queries/boards filter on
 // env=... (see applications/observability/README.md). Unlabeled pods
 // (system components, pre-contract strays) simply get no env label.
-discovery.kubernetes "pods" { role = "pod" }
+// discovery.kubernetes "pods" is defined in the POD LOGS section above —
+// this relabel consumes the SAME discovery, filtered to the annotation
+// contract. Pods NOT annotated (system components, pre-contract strays)
+// simply get no env label.
 discovery.relabel "pod_metrics" {
     targets = discovery.kubernetes.pods.targets
     rule {
@@ -230,16 +308,47 @@ prometheus.scrape "pod_metrics" {
 }
 
 // ================= OTLP ingest (metrics + logs; TRACES OFF — no Tempo) =================
+// FIRST LIVE PRODUCER (walked 2026-11-14): traefik pushes its OpenTelemetry
+// metrics to this receiver (`--set metrics.otlp.http.endpoint=...alloy:4318`
+// in runbook ch.03 §6) — the ONLY path carrying the OTel semconv
+// http.server.request.duration histogram, which lands in VictoriaMetrics as
+// http_server_request_duration_seconds_{bucket,sum,count} (job="traefik").
+// THE OWNERSHIP SPLIT: traefik's push ALSO carries its own traefik_* counters
+// that the Prometheus PULL above already exports — without the filter those
+// families would exist TWICE with different label sets (job="traefik" vs
+// job="annotated-pods"), and every unfiltered sum(rate(...)) would
+// double-count. The filter drops ^traefik_ from the push stream:
+//   pull  = the one source of traefik_* families
+//   push  = the one source of the semconv HTTP metrics
+otelcol.processor.filter "semconv_only" {
+    error_mode = "ignore"
+    metric_conditions {
+    conditions = [
+        `IsMatch(name, "^traefik_")`,
+    ]
+    context = "metric"
+    }
+    output {
+    metrics = [otelcol.exporter.prometheus.m2vm.input]
+    }
+}
 otelcol.receiver.otlp "in" {
     grpc { endpoint = "0.0.0.0:4317" }
     http { endpoint = "0.0.0.0:4318" }
     // traces intentionally absent: no Tempo (§1). Enable when/if a trace store exists.
     output {
-        metrics = [otelcol.exporter.prometheus.m2vm.input]
-        logs    = [otelcol.exporter.loki.m2loki.input]
+    metrics = [otelcol.processor.filter.semconv_only.input]
+    logs    = [otelcol.exporter.loki.m2loki.input]
     }
 }
 otelcol.exporter.prometheus "m2vm" {
+    // Traefik's resource attributes (its auto-detected k8s.namespace.name /
+    // k8s.pod.name / k8s.pod.uid, plus service.name -> the job label) become
+    // LABELS on every converted metric — the OTLP counterpart of the log
+    // env-label contract above. CAVEAT (VPS): attribute auto-detection needs
+    // pod networking — on the hostNetwork VPS shape the k8s.* attrs are
+    // absent (the semconv request labels still carry the rest).
+    resource_to_telemetry_conversion = true
     forward_to = [prometheus.remote_write.vm.receiver]
 }
 otelcol.exporter.loki "m2loki" {
