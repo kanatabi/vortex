@@ -51,10 +51,13 @@ spec:
   # the LUMEN_DB_URL behind each overlay's Bao path (INFRA doc §5) — no
   # manifest change is needed to add an environment beyond a new db/user
   # pair here + a seed there. The operator generates the per-user credentials
-  # into its DOTTED-NAMING Secrets: lumen-pg.<user> (e.g.
-  # lumen-pg.db_user_admin) — walk-proven shape; the `databases:`/`users:`
-  # CR fields are unchanged from operator v1.13.0 through v2.0.3 (CRD still
-  # serves acid.zalan.do/v1 — the walk's apiserver accepted exactly this).
+  # into Secrets named <user>.<cluster>.credentials.postgresql.acid.zalan.do —
+  # USER first, underscores HYPHENATED in the k8s name (DNS-1123):
+  #   db-user-admin.lumen-pg.credentials.postgresql.acid.zalan.do
+  # while the PostgreSQL ROLE keeps its underscores (db_user_admin — the
+  # Secret's .data.username proves it). Walk-verified 2026-11-14, operator
+  # v2.0.3; the `databases:`/`users:` CR fields are unchanged from
+  # v1.13.0 through v2.0.3 (CRD still serves acid.zalan.do/v1).
   # Accepted trade-off: staging load spikes share prod's box (right for blog
   # scale).
   databases:
