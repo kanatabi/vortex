@@ -339,3 +339,12 @@ The release ladder and bump mechanics are owned by the
 - Recreate the owner's PLAN.md in Git — it's a local-only journal (gitignored in
   the app repos); record plans in commit messages or the omicron vault instead.
 - Re-fork the INFRA doc or the runbook into this repo — link, don't copy.
+
+## 11. Context sync (workspace rule, 2026-11-15)
+
+Changes that alter this repo's shape, contracts, or state update the
+vault's learning note in the SAME round: `omicron` →
+`context-knowledge/repos/vortex/README.md` (+ its `LEARNING.md` if the
+change minted a lesson; + the runbook/INFRA docs when decision- or
+operation-level). "The manifests landed but the vault didn't" is an
+incomplete round — the checklist lives at the end of that note.
