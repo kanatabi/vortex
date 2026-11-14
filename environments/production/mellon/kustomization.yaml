@@ -34,7 +34,7 @@ components:
 images:
 - name: lumen
   newName: ghcr.io/kanatabi/lumen
-  newTag: v4.0.2
+  newTag: v4.1.0
 - name: mellon
   newName: ghcr.io/kanatabi/mellon
   newTag: v3.0.2
