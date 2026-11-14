@@ -48,7 +48,7 @@ components:
 images:
 - name: lumen
   newName: ghcr.io/kanatabi/lumen
-  newTag: v4.0.1
+  newTag: v4.0.2
 
   # `ns lumen` is a CO-TENANT object — deleted here; foundation-owned
   # (environments/foundation/lumen renders it; full story in
@@ -69,6 +69,10 @@ images:
   # bump flow edits all three lines in one commit, CI asserts equality).
       # Full-args replacement (never element-wise) — see component header.
     # Full-args replacement (never element-wise) — see component header.
+# nameSuffix leaves SPEC fields alone (the trap noted at the top): the
+# gate hook's pod spec and the binding's refs stay LITERAL — pinned to
+# the suffix THIS tree renders (SA/Role metadata.names get it from
+# nameSuffix).
 patches:
 - patch: |-
     $patch: delete
@@ -135,10 +139,6 @@ patches:
   target:
     kind: Job
     name: config-gate
-# nameSuffix leaves SPEC fields alone (the trap noted at the top): the
-# gate hook's pod spec and the binding's refs stay LITERAL — pinned to
-# the suffix THIS tree renders (SA/Role metadata.names get it from
-# nameSuffix).
 - patch: |-
     - op: replace
       path: /spec/template/spec/serviceAccountName
