@@ -55,7 +55,7 @@ components:
 images:
 - name: lumen
   newName: ghcr.io/kanatabi/lumen
-  newTag: v2.2.0
+  newTag: v3.0.0
 
   # `ns lumen` is a CO-TENANT object (staging + production workloads share
   # it): both env trees would render it with DIFFERENT omicron/env labels
