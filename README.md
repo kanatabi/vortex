@@ -55,6 +55,13 @@ Public doors: `gofar.id` + `www.gofar.id` (earendil), `console.gofar.id` (mellon
 
 ## Status
 
-Production doors are LIVE (cutover 2026-11-11). Staging hosts are contractual —
-DNS records and vault seeds land when staging goes live on a cluster. Current
-details in AGENTS.md §3.
+**Declared, not yet serving (2026-11-15):** the manifests declare the
+production doors (`gofar.id` + `www` — the domain cutover happened in DNS,
+verified 2026-11-11, `ainurrofiq.com` 301s in) — but the staging and
+production hubs are **not yet applied to any cluster**, so the webapp is
+not currently serving. The remaining walk is runbook
+[`00a-run-order.md`](https://github.com/kanatabi/omicron/blob/main/runbook/00a-run-order.md):
+Argo CD → foundation hub → the M3 vault ritual → grafana four-key verify →
+observability hub → production + staging hubs → ch.06's first-instance
+checks. Staging hosts stay contractual until then (DNS records + vault
+seeds land when staging first goes live). Current details in AGENTS.md §3.
