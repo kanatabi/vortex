@@ -1,5 +1,13 @@
 # Requires Zalando's Postgres Operator installed first (INFRA_ARCHITECTURE.md, Phase 4):
-#   kubectl apply -f https://raw.githubusercontent.com/zalando/postgres-operator/v1.13.0/manifests/operator-manifests.yaml
+#   kubectl apply -f https://raw.githubusercontent.com/zalando/postgres-operator/v2.0.3/manifests/postgresql.crd.yaml \
+#     -f https://raw.githubusercontent.com/zalando/postgres-operator/v2.0.3/manifests/operatorconfiguration.crd.yaml \
+#     -f https://raw.githubusercontent.com/zalando/postgres-operator/v2.0.3/manifests/postgresteam.crd.yaml
+#   kubectl apply -k 'github.com/zalando/postgres-operator/manifests?ref=v2.0.3'
+# (the old single operator-manifests.yaml URL never existed upstream; pin bumped
+#  v1.13.0 -> v2.0.3 for FRESH installs: the postgresql CRD still serves
+#  acid.zalan.do/v1 and this manifest uses none of v2's dropped fields. The live
+#  estate's v1 operator upgrade is the upstream migrate.md procedure — a separate
+#  deliberate project. Full why-note: runbook 04 §2. Walked green 2026-11-14.)
 # This is Topology Option A (2 instances / 2 workers). Option C (3 instances on 3
 # workers + synchronous_mode) is a documented one-PR change — INFRA doc Phase 4.
 apiVersion: 'acid.zalan.do/v1'
