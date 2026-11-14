@@ -45,7 +45,7 @@ components:
 images:
 - name: earendil
   newName: ghcr.io/kanatabi/earendil
-  newTag: v1.2.1
+  newTag: v1.2.2
 - name: lumen
   newName: ghcr.io/kanatabi/lumen
   newTag: v4.1.0
