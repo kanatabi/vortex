@@ -1,4 +1,11 @@
 # Loki single-binary — logs store. 7-day retention, tsdb schema, filesystem storage.
+# (The standalone 15Gi PVC that used to live here was an ORPHAN — the STS
+# provisions its own via volumeClaimTemplates (data-loki-0); nothing ever
+# consumed the named PVC, so it sat WaitForFirstConsumer forever, never
+# Bound, and Argo's wave-0 health gate waited on it forever — EVERY sync
+# operation wedged "Running" and blocked the app (walked 2026-11-14; the
+# 04:01Z wedge predates the config fixes). Deleted from Git and the cluster
+# — it never bound, so there was no data to lose.)
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -52,15 +59,6 @@ data:
       ring:
         kvstore:
           store: inmemory
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: loki
-spec:
-  accessModes: [ReadWriteOnce]
-  storageClassName: local-path
-  resources: { requests: { storage: 15Gi } }
 ---
 apiVersion: apps/v1
 kind: StatefulSet
