@@ -49,7 +49,7 @@ images:
   newTag: v1.1.0
 - name: lumen
   newName: ghcr.io/kanatabi/lumen
-  newTag: v3.0.0
+  newTag: v4.0.1
 
 # TLS ownership -> the authored ingress.yaml (see that file for the full
 # story: the explicit Certificate gofar-id renders tls-gofar — UNSUFFIXED,

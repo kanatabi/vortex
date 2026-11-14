@@ -47,7 +47,7 @@ components:
 images:
 - name: lumen
   newName: ghcr.io/kanatabi/lumen
-  newTag: v3.0.0
+  newTag: v4.0.1
 
   # `ns lumen` is a CO-TENANT object — deleted here; foundation-owned
   # (environments/foundation/lumen renders it; full story in
