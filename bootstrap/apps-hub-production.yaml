@@ -1,4 +1,4 @@
-# App-of-apps hub, PRODUCTION entrypoint (#2 of two) — the production
+# App-of-apps hub, PRODUCTION entrypoint (#3 of four — the observability hub became #2) — the production
 # application plane: lumen, earendil, mellon, certificates. Apply ONLY
 # after bootstrap/apps-hub-foundation.yaml is healthy AND the vault has been
 # seeded via runbook M3 — the store (`bao`, foundation wave 1) must be Ready
