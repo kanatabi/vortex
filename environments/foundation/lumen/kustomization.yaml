@@ -59,6 +59,7 @@ images:
   # THE EPOCH TRIO for the shared plane: pod annotation == gate --declared
   # == ES annotation, byte-equal ("0" — admin boots at epoch 0).
       # Full-args replacement (never element-wise) — see component header.
+    # Full-args replacement (never element-wise) — see component header.
 patches:
 - patch: |-
     apiVersion: apps/v1
