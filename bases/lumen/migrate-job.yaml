@@ -16,8 +16,10 @@ metadata:
   labels:
     app: lumen-migrate
   annotations:
-    argocd.argoproj.io/hook: PreSync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
+    # NOT a PreSync hook (walked 2026-11-14): hooks run before the sync
+    # applies the env ES — the Secret can't exist yet on a fresh cluster.
+    # Wave ordering: ES (wave 0, overlay) Healthy -> migrate (wave 1).
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   backoffLimit: 3
   activeDeadlineSeconds: 300

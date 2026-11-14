@@ -3,6 +3,8 @@ kind: Deployment
 metadata:
   name: lumen-http-server
   namespace: lumen
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"   # after migrate (wave 1) — never boots dark
   labels:
     app: lumen-http-server
     app.kubernetes.io/name: lumen
