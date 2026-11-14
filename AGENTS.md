@@ -181,7 +181,8 @@ with the rehearsal trees.
 ## 5. Bootstrap order (new cluster)
 
 Four hubs, in this order — the ordering IS the seed-before-apps invariant (the
-single-VPS estate runs foundation+observability+production; add staging wherever the
+single-VPS estate's DECLARED hub set is foundation+observability+production —
+applied per the runbook walk, not assumed running; add staging wherever the
 staging tree should land — same cluster or another):
 
 ```bash
