@@ -14,12 +14,11 @@
 # bootstrap family (lumen-bao-credentials, literal name shared in ns lumen —
 # bootstrap paradox, never an ES).
 #
-# CONTRACT FLAGS (role split lands in parallel in the lumen repo):
-# LUMEN_ROLE=admin and the LUMEN_MEILI_* keys below are the AGREED contract
-# names, NOT yet bindings on lumen main (main binds DB_URL/MEILI_URL/
-# MEILI_KEY/SESSION_JWT_SECRET + LUMEN_MEDIA_* — the keys this CR mirrors).
-# If the role-split PR renames anything, this CR and the cms overlays move
-# in lockstep with it.
+# CONTRACT FLAGS — RESOLVED (2026-11-14): the role split SHIPPED in v3.0.0
+# (de331e9, one binary two planes): LUMEN_ROLE=admin is a real binding and
+# the admin plane boots postgres-only (no MEILI/MEDIA bindings — the ES's
+# dropped keys stay dropped, now correctly). If a future lumen PR renames
+# anything, this CR and the cms overlays move in lockstep with it.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
@@ -55,7 +54,7 @@ components:
 images:
 - name: lumen
   newName: ghcr.io/kanatabi/lumen
-  newTag: v2.2.0
+  newTag: v3.0.0
 
   # THE EPOCH TRIO for the shared plane: pod annotation == gate --declared
   # == ES annotation, byte-equal ("0" — admin boots at epoch 0).
