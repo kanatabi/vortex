@@ -129,8 +129,11 @@ component died with the rehearsal trees.
 .
 ├── bootstrap/                     # manual-applied hub entrypoints
 │   ├── apps-hub-foundation.yaml   # #1: syncs apps/foundation/ (values+data plane)
-│   ├── apps-hub-production.yaml   # #2: syncs apps/production/ (application plane)
-│   ├── apps-hub-staging.yaml      # #3: syncs apps/staging/ (staging plane, same
+│   ├── apps-hub-observability.yaml # #2, THE GATE: syncs apps/observability/ —
+│   │                              #     applied only after the grafana four-key
+│   │                              #     seed verifies (ESs error on missing keys)
+│   ├── apps-hub-production.yaml   # #3: syncs apps/production/ (application plane)
+│   ├── apps-hub-staging.yaml      # #4: syncs apps/staging/ (staging plane, same
 │   │                              #     or another cluster — destination-only)
 │   └── apps-hub.yaml              # 3-node BLUEPRINT hub (future scale-out shape)
 ├── apps/                      # Application CRs ONLY (one per deployed app) —
@@ -145,7 +148,9 @@ component died with the rehearsal trees.
 │   ├── secrets-plane-app.yaml # ClusterSecretStore `bao` (wave 1: after ESO+OpenBao)
 │   ├── foundation/            # FOUNDATION hub CRs (openbao 0, external-secrets 0,
 │   │                          # secrets-plane 1, lumen-db 1, meilisearch 1,
-│   │                          # observability 2, lumen-admin 2)
+│   │                          # lumen-admin 2)
+│   ├── observability/         # OBSERVABILITY hub CR (the eyes — own hub, own
+│   │                          # manual gate; source environments/foundation/observability)
 │   ├── production/            # PRODUCTION hub CRs (lumen 0, earendil 1, mellon 1,
 │   │                          # certificates 1) → environments/production/*
 │   └── staging/               # STAGING hub CRs (lumen-staging 0, earendil-staging 1,
@@ -169,8 +174,9 @@ component died with the rehearsal trees.
 
 ## Entrypoints — bootstrap order (new cluster)
 
-Three hubs, in this order — the ordering IS the seed-before-apps invariant
-(the single-VPS estate runs foundation+production; add staging wherever the
+Four hubs, in this order — the ordering IS the seed-before-apps invariant
+(the single-VPS estate runs foundation+observability+production; add
+staging wherever the
 staging tree should land — same cluster or another):
 
 ```bash
@@ -181,14 +187,19 @@ kubectl apply -f bootstrap/apps-hub-foundation.yaml   # #1: values+data plane
 # and the kv seeds — kv/{app}/{env} for EVERY environment you plan to run
 # (production, staging) plus kv/lumen/shared (admin) and the
 # cert-manager/grafana feeds. The `bao` ClusterSecretStore stays NOT-Ready
-# until M3 lands; foundation wave 2 (observability, lumen-admin) waits for
+# until M3 lands; foundation wave 2 (lumen-admin) waits for
 # it structurally — do not proceed before it is Ready.
-kubectl apply -f bootstrap/apps-hub-production.yaml   # #2: production plane
-kubectl apply -f bootstrap/apps-hub-staging.yaml      # #3 (optional): staging
+kubectl apply -f bootstrap/apps-hub-observability.yaml # #2, THE GATE: the eyes
+# → only after the §6.5 grafana FOUR-KEY put verifies (the two grafana
+# ExternalSecrets Ready) — an ES errors on any missing declared key, so an
+# early apply wedges the sync op forever (runbook ch.12 card 11).
+kubectl apply -f bootstrap/apps-hub-production.yaml   # #3: production plane
+kubectl apply -f bootstrap/apps-hub-staging.yaml      # #4 (optional): staging
 ```
 
-Sync waves restart per hub. Foundation = waves 0/0/1/1/1/2/2 above;
-production = lumen 0 (dependency root), earendil + mellon + certificates 1;
+Sync waves restart per hub. Foundation = waves 0/0/1/1/1/2 above;
+observability = a single wave-0 fleet; production = lumen 0 (dependency
+root), earendil + mellon + certificates 1;
 staging = lumen-staging 0, earendil-staging + mellon-staging 1. Exactly one
 hub SET (foundation + at least one app hub) may own a cluster; every hub
 syncs its own folder **non-recursively**, so the trees never see each
