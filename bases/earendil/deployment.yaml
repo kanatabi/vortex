@@ -16,6 +16,15 @@ spec:
     metadata:
       labels:
         app: earendil-web-server
+      # Observability contract (architecture doc Phase 5): Alloy scrapes
+      # annotated pods — no sidecars, no public API. The Node apps serve
+      # /metrics on an UNROUTED listener (EARENDIL_/MELLON_METRICS_PORT,
+      # default 9090, one process, two listeners) — landed 2026-11-15
+      # (earendil 7b872ad / mellon c86c9cd).
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
     spec:
       # NOTE: if GHCR packages are private, create an imagePullSecret in this namespace
       # and add: imagePullSecrets: [{name: ghcr-pull}]
