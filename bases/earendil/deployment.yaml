@@ -66,12 +66,12 @@ spec:
           # would 404 the pod out of the Service: DOWNTIME). The repoint
           # rides the next earendil release.
           readinessProbe:
-            httpGet: { path: /, port: http }
+            httpGet: { path: /healthz, port: http }
             initialDelaySeconds: 30
             periodSeconds: 60
           livenessProbe:
             # same ordering constraint as the readiness probe above
-            httpGet: { path: /, port: http }
+            httpGet: { path: /healthz, port: http }
             initialDelaySeconds: 10
             periodSeconds: 20
           resources:
