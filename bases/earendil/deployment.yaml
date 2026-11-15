@@ -68,7 +68,8 @@ spec:
             initialDelaySeconds: 30
             periodSeconds: 60
           livenessProbe:
-            httpGet: { path: /healthz, port: http }
+            # same ordering constraint as the readiness probe above
+            httpGet: { path: /, port: http }
             initialDelaySeconds: 10
             periodSeconds: 20
           resources:
