@@ -60,11 +60,13 @@ spec:
           # (API_BASE unset = dev default) instead of a ConfigMapError.
           envFrom:
             - configMapRef: { name: app-config, optional: true }
-          # /healthz: the STATIC health door — a probe must never render a page
-# (the old `path: /` probes SSR-rendered the homepage and fired lumen
-# calls every 20s: the fake /api/* traffic the metrics exposed).
+          # NOTE: still `/` — the /healthz repoint is SAFE ONLY AFTER
+          # earendil's next image releases (the door landed 2026-11-15,
+          # 50bd8d0; v1.2.2 and v1.3.0 do not carry it — a repointed probe
+          # would 404 the pod out of the Service: DOWNTIME). The repoint
+          # rides the next earendil release.
           readinessProbe:
-            httpGet: { path: /healthz, port: http }
+            httpGet: { path: /, port: http }
             initialDelaySeconds: 30
             periodSeconds: 60
           livenessProbe:
