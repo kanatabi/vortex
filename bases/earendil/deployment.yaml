@@ -60,13 +60,15 @@ spec:
           # (API_BASE unset = dev default) instead of a ConfigMapError.
           envFrom:
             - configMapRef: { name: app-config, optional: true }
-          # No dedicated health route; the root page renders 200 in SSR.
+          # /healthz: the STATIC health door — a probe must never render a page
+# (the old `path: /` probes SSR-rendered the homepage and fired lumen
+# calls every 20s: the fake /api/* traffic the metrics exposed).
           readinessProbe:
-            httpGet: { path: /, port: http }
+            httpGet: { path: /healthz, port: http }
             initialDelaySeconds: 30
             periodSeconds: 60
           livenessProbe:
-            httpGet: { path: /, port: http }
+            httpGet: { path: /healthz, port: http }
             initialDelaySeconds: 10
             periodSeconds: 20
           resources:
