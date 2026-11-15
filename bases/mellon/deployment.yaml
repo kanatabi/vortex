@@ -60,11 +60,11 @@ spec:
             - configMapRef: { name: app-config, optional: true }
           # unauthenticated / is a 307 to /login — kubelet counts 2xx-3xx healthy.
           readinessProbe:
-            httpGet: { path: /, port: http }
+            httpGet: { path: /healthz, port: http }
             initialDelaySeconds: 10
             periodSeconds: 20
           livenessProbe:
-            httpGet: { path: /, port: http }
+            httpGet: { path: /healthz, port: http }
             initialDelaySeconds: 30
             periodSeconds: 30
           resources:
