@@ -1,0 +1,26 @@
+# PRODUCTION hub, wave 2: the GitOps door — argo.gofar.id terminates TLS at
+# the edge into argocd-server. It lives AFTER certificates (wave 1) so a
+# fresh-cluster walk issues before the door routes; the frontends' own rule
+# holds anyway (an Ingress missing its tls Secret is merely
+# not-yet-terminating — Traefik picks the cert up when issuance lands).
+# The base is authored final: there is ONE hub, no env twins to overlay.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd-ingress
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/kanatabi/vortex.git'
+    targetRevision: HEAD
+    path: bases/argocd-ingress
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

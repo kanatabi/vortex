@@ -1,0 +1,9 @@
+# The GitOps door's base: one Ingress, authored FINAL (env-model: no
+# staging/production twins — there is ONE hub). Consumed by the production
+# hub via apps/production/argocd-ingress-app.yaml. TLS rides the explicit
+# Certificate argo-gofar-id (bases/certificates) — see ingress.yaml.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ingress.yaml

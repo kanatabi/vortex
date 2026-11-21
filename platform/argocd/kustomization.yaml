@@ -49,3 +49,23 @@ patches:
       labelSelector: app.kubernetes.io/part-of=argocd
   # Per-component requests/limits (multi-document strategic-merge patch).
   - path: resources-patches.yaml
+
+  # The public door (argo.gofar.id, bases/argocd-ingress) terminates TLS at
+  # the Traefik edge — termination-at-ingress REQUIRES argocd-server insecure
+  # (plain HTTP behind the edge), else the server 3-redirects to its own
+  # https and the door loops. Upstream sets no args (command: /argocd-server),
+  # so this strategic merge is an ADD, not a replacement of anything.
+  - target:
+      kind: Deployment
+      name: argocd-server
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: argocd-server
+      spec:
+        template:
+          spec:
+            containers:
+              - name: argocd-server
+                args: ["--insecure"]
