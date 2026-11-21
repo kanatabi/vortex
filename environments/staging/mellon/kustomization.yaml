@@ -77,13 +77,13 @@ patches:
       template:
         metadata:
           annotations:
-            omicron/config.epoch: "8"
+            omicron/config.epoch: "10"
   target:
     kind: Deployment
 - patch: |-
     - op: replace
       path: /spec/template/spec/containers/0/args
-      value: ["config", "check-epoch", "--app", "mellon", "--env", "staging", "--declared", "8"]
+      value: ["config", "check-epoch", "--app", "mellon", "--env", "staging", "--declared", "10"]
   target:
     kind: Job
     name: config-gate
