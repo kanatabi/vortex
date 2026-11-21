@@ -13,6 +13,9 @@
 #   console.gofar.id      -> mellon production     (surface #2, admin portal)
 #   staging-console       -> mellon staging
 #   anor.gofar.id         -> grafana               (dashboard door)
+#   argo.gofar.id         -> argocd                (the GitOps door, amended
+#                                                   2026-11-21: the hub's own
+#                                                   UI, admin-login only)
 # DNS-01 works on every cluster, so staging certificates ride the SAME
 # ClusterIssuer (components/selfsigned retired with the rehearsal tree).
 # NOTE for the staging overlays: kustomize nameSuffix does NOT reach this
@@ -65,6 +68,22 @@ spec:
   commonName: anor.gofar.id
   dnsNames:
     - anor.gofar.id
+  duration: 2160h0m0s      # 90d
+  renewBefore: 720h0m0s    # 30d
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: argo-gofar-id
+  namespace: argocd   # the argocd Namespace is bootstrap-owned (platform/argocd)
+spec:
+  secretName: tls-argo   # referenced verbatim by bases/argocd-ingress
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  commonName: argo.gofar.id
+  dnsNames:
+    - argo.gofar.id
   duration: 2160h0m0s      # 90d
   renewBefore: 720h0m0s    # 30d
 ---

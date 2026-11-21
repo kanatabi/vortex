@@ -1,0 +1,50 @@
+# argo.gofar.id — the GitOps door (INFRA §2 amendment 2026-11-21). The hub's
+# own UI, publicly reachable, admin-login only — the anor/grafana shape:
+# authenticated by the workload's own login, TLS by the explicit Certificate
+# (argo-gofar-id, bases/certificates renders tls-argo — NO cert-manager.io/
+# cluster-issuer annotation ON PURPOSE: the ingress-shim would shadow-issue a
+# duplicate Certificate against the same hostnames against LE rate limits).
+#
+# WHY an Argo-managed app for Argo CD's own door: the argocd INSTALL is the
+# bootstrap exception (platform/argocd, kubectl apply -k — it cannot sync
+# itself before it exists), but the DOOR has no such chicken-and-egg — the
+# hub is long running by the time this Application exists, and a door that
+# only kubectl ever created would drift invisible to the gate. It syncs into
+# the bootstrap-owned argocd Namespace WITHOUT owning the Namespace object.
+#
+# The argocd-server runs --insecure (platform/argocd patch): TLS terminates
+# at the Traefik edge, the hop to argocd-server is plain HTTP — the
+# documented termination-at-ingress shape; without the flag the server
+# 3-redirects to its own https and the door loops.
+#
+# LAST WAVE + SKIP-HEALTH-CHECK, deliberately (the grafana door's lesson,
+# walked 2026-11-14): on k3d (no load-balancer assignment) an Ingress is
+# PERMANENTLY Degraded (empty status.loadBalancer), and Argo's sync op waits
+# for the LAST wave's health before completing — an unexempted Ingress
+# wedges the whole app. skip-health-check exempts it; the door still works
+# fully where a real LB exists (the VPS, runbook ch. 07).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: argocd-server
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/skip-health-check: "true"
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: argo.gofar.id
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: argocd-server
+                port:
+                  name: http
+  tls:
+    - secretName: tls-argo
+      hosts:
+        - argo.gofar.id
