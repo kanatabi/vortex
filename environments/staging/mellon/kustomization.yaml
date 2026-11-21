@@ -40,7 +40,7 @@ images:
   newTag: v4.5.0
 - name: mellon
   newName: ghcr.io/kanatabi/mellon
-  newTag: v4.0.4
+  newTag: v4.0.5
 
   # `ns mellon` is a CO-TENANT object — deleted here; rendered ONCE by
   # environments/foundation/lumen (see the full story in
@@ -77,13 +77,13 @@ patches:
       template:
         metadata:
           annotations:
-            omicron/config.epoch: "0"
+            omicron/config.epoch: "8"
   target:
     kind: Deployment
 - patch: |-
     - op: replace
       path: /spec/template/spec/containers/0/args
-      value: ["config", "check-epoch", "--app", "mellon", "--env", "staging", "--declared", "0"]
+      value: ["config", "check-epoch", "--app", "mellon", "--env", "staging", "--declared", "8"]
   target:
     kind: Job
     name: config-gate
