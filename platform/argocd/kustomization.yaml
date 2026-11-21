@@ -53,8 +53,10 @@ patches:
   # The public door (argo.gofar.id, bases/argocd-ingress) terminates TLS at
   # the Traefik edge — termination-at-ingress REQUIRES argocd-server insecure
   # (plain HTTP behind the edge), else the server 3-redirects to its own
-  # https and the door loops. Upstream sets no args (command: /argocd-server),
-  # so this strategic merge is an ADD, not a replacement of anything.
+  # https and the door loops. CAREFUL: upstream v3.6.1 puts the BINARY in
+  # args (the image entrypoint is tini) — a strategic merge on args REPLACES
+  # the list, so the binary rides along or tini execs "--insecure" and
+  # CrashLoops (walked 2026-11-21).
   - target:
       kind: Deployment
       name: argocd-server
@@ -68,4 +70,4 @@ patches:
           spec:
             containers:
               - name: argocd-server
-                args: ["--insecure"]
+                args: ["/usr/local/bin/argocd-server", "--insecure"]
