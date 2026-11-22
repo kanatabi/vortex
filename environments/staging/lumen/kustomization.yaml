@@ -56,7 +56,7 @@ components:
 images:
 - name: lumen
   newName: ghcr.io/kanatabi/lumen
-  newTag: v4.5.0
+  newTag: v4.6.0
 
   # `ns lumen` is a CO-TENANT object (staging + production workloads share
   # it): both env trees would render it with DIFFERENT omicron/env labels
@@ -142,14 +142,14 @@ patches:
       template:
         metadata:
           annotations:
-            omicron/config.epoch: "0"
+            omicron/config.epoch: "3"
   target:
     kind: Deployment
 - patch: |-
     # Full-args replacement (never element-wise) — see component header.
     - op: replace
       path: /spec/template/spec/containers/0/args
-      value: ["config", "check-epoch", "--app", "lumen", "--env", "staging", "--declared", "0"]
+      value: ["config", "check-epoch", "--app", "lumen", "--env", "staging", "--declared", "3"]
   target:
     kind: Job
     name: config-gate
