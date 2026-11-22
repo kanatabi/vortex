@@ -20,6 +20,16 @@ metadata:
     # applies the env ES — the Secret can't exist yet on a fresh cluster.
     # Wave ordering: ES (wave 0, overlay) Healthy -> migrate (wave 1).
     argocd.argoproj.io/sync-wave: "1"
+    # CreateReplace (walked 2026-11-22): the janitor deletes the completed
+    # corpse at PreSync — but Argo's sync op was planned from the PRE-hook
+    # cache (the corpse existed → op = PATCH) → the patch hit the deleted
+    # object → 'Resource not found in cluster' → red first sync, wave 2
+    # blocked. CreateReplace makes Argo CREATE-at-apply when the object is
+    # missing AND delete+recreate on the immutable-field change (the image
+    # bump) — the corpse race dies structurally; the janitor stays as the
+    # belt. (Replace=true was walked and reverted 2026-11-14: a PUT obeys
+    # the same immutability. CreateReplace ≠ Replace.)
+    argocd.argoproj.io/sync-options: CreateReplace=true
 spec:
   backoffLimit: 3
   activeDeadlineSeconds: 300

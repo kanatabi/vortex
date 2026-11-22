@@ -18,6 +18,12 @@ metadata:
     # migrate deadlocked on every fresh cluster. Wave ordering instead:
     # ES (wave 0) must be Healthy (ESO-rendered) before wave 1 runs.
     argocd.argoproj.io/sync-wave: "1"
+    # CreateReplace (walked 2026-11-22) — SAME race as bases/lumen's job:
+    # the janitor deletes the corpse at PreSync while the sync op (planned
+    # from the pre-hook cache) = PATCH → 'Resource not found' → red first
+    # sync on bump days. CreateReplace = create-at-apply + the immutable-
+    # field delete+recreate; the janitor stays as the belt.
+    argocd.argoproj.io/sync-options: CreateReplace=true
 spec:
   backoffLimit: 3
   activeDeadlineSeconds: 300
