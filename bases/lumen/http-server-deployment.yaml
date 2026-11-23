@@ -84,4 +84,9 @@ spec:
             periodSeconds: 60
           resources:
             requests: { cpu: 100m, memory: 128Mi }
-            limits: { cpu: 300m, memory: 256Mi }
+            # 768Mi (2026-11-23): the 100 MB upload cap's decode spike. A
+            # ~60 MP JPEG = ~100 MB raw + ~90 MB decoded YCbCr + the re-encode
+            # buffer; 256Mi OOM-killed the probe. media.MaxPixels bounds the
+            # spike (60 MP) — this limit is the headroom that makes the bound
+            # honest, requests unchanged (limits are oversubscribed by design).
+            limits: { cpu: 300m, memory: 768Mi }
