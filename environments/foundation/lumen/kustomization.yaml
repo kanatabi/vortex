@@ -72,14 +72,14 @@ patches:
       template:
         metadata:
           annotations:
-            omicron/config.epoch: "0"
+            omicron/config.epoch: "2"
   target:
     kind: Deployment
 - patch: |-
     # Full-args replacement (never element-wise) — see component header.
     - op: replace
       path: /spec/template/spec/containers/0/args
-      value: ["config", "check-epoch", "--app", "lumen", "--env", "shared", "--declared", "0"]
+      value: ["config", "check-epoch", "--app", "lumen", "--env", "shared", "--declared", "2"]
   target:
     kind: Job
     name: config-gate
