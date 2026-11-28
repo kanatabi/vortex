@@ -89,18 +89,21 @@ singletons.
 
 **ES = the render contract.** Every ExternalSecret `data:` list mirrors what the
 deployed role actually binds — for lumen that truth is machine-readable
-(`lumen config keys --role admin|cms`): the admin ES binds FOUR properties from
+(`lumen config keys --role admin|cms`): the admin ES binds FIVE properties from
 `lumen/shared` — `LUMEN_DB_URL`, `LUMEN_SESSION_JWT_SECRET` (the signing key has
-exactly ONE home), `LUMEN_WEBAUTHN_RP_ID`, and `LUMEN_WEBAUTHN_ORIGINS` ← vault
+exactly ONE home), `LUMEN_IDENTITY_TOKEN` (the app planes' identity door; one
+value per estate), `LUMEN_WEBAUTHN_RP_ID`, and `LUMEN_WEBAUTHN_ORIGINS` ← vault
 property `LUMEN_WEBAUTHN_ORIGIN` (the ONE declared translation; the vault key
 predates the wire rename) — the cms ESes
-carry the content keys plus `LUMEN_ADMIN_URL` (source `lumen/shared` — a service
-URL is a VALUE; the `LUMEN_MEILI_URL` precedent) and never the JWT secret.
+carry the content keys plus `LUMEN_IDENTITY_TOKEN` (from their OWN env path),
+`LUMEN_ADMIN_URL` (source `lumen/shared` — a service URL is a VALUE; the
+`LUMEN_MEILI_URL` precedent) and never the JWT secret.
 `LUMEN_ROLE` stays inline on the pods: deployment IDENTITY, not configuration —
 vault must never be able to silently re-role a fleet. **Not every secret is an ES
 value**: `LUMEN_NOTIFICATION_TOKEN` (the optional notification send door) rides
-the hand-made `lumen-notification-token` Secret — no kv path, no render, no epoch
-flip. **Seeding order**: ESO fails
+the hand-made `lumen-notification-token` Secret on admin; a cms plane that sends
+task notifications receives the SAME value at its own env path (optional —
+absent = notifications off, mutations still commit). No epoch flip either way. **Seeding order**: ESO fails
 the whole render on a missing property, so every key a contract names must exist in
 Bao BEFORE its hub syncs (the runbook orders this).
 
