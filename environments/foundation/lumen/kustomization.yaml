@@ -56,7 +56,7 @@ components:
 images:
 - name: lumen
   newName: ghcr.io/kanatabi/lumen
-  newTag: v5.7.0
+  newTag: v5.8.0
 
   # THE EPOCH TRIO for the shared plane: pod annotation == gate --declared
   # == ES annotation, byte-equal ("0" — admin boots at epoch 0).
@@ -72,14 +72,14 @@ patches:
       template:
         metadata:
           annotations:
-            omicron/config.epoch: "4"
+            omicron/config.epoch: "5"
   target:
     kind: Deployment
 - patch: |-
     # Full-args replacement (never element-wise) — see component header.
     - op: replace
       path: /spec/template/spec/containers/0/args
-      value: ["config", "check-epoch", "--app", "lumen", "--env", "shared", "--declared", "4"]
+      value: ["config", "check-epoch", "--app", "lumen", "--env", "shared", "--declared", "5"]
   target:
     kind: Job
     name: config-gate
