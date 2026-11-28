@@ -48,7 +48,7 @@ components:
 images:
 - name: lumen
   newName: ghcr.io/kanatabi/lumen
-  newTag: v5.7.0
+  newTag: v5.9.0
 
   # `ns lumen` is a CO-TENANT object — deleted here; foundation-owned
   # (environments/foundation/lumen renders it; full story in
@@ -133,14 +133,14 @@ patches:
       template:
         metadata:
           annotations:
-            omicron/config.epoch: "6"
+            omicron/config.epoch: "8"
   target:
     kind: Deployment
 - patch: |-
     # Full-args replacement (never element-wise) — see component header.
     - op: replace
       path: /spec/template/spec/containers/0/args
-      value: ["config", "check-epoch", "--app", "lumen", "--env", "production", "--declared", "6"]
+      value: ["config", "check-epoch", "--app", "lumen", "--env", "production", "--declared", "8"]
   target:
     kind: Job
     name: config-gate
