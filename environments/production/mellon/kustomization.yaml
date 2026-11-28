@@ -34,10 +34,10 @@ components:
 images:
 - name: lumen
   newName: ghcr.io/kanatabi/lumen
-  newTag: v5.1.0
+  newTag: v5.9.0
 - name: mellon
   newName: ghcr.io/kanatabi/mellon
-  newTag: v4.14.2
+  newTag: v4.18.0
 
   # `ns mellon` is a CO-TENANT object — deleted here; foundation-owned
   # (environments/foundation/lumen; story in
@@ -65,6 +65,15 @@ patches:
     - op: replace
       path: /spec/template/spec/containers/0/envFrom/0/configMapRef/name
       value: app-config-production
+  target:
+    kind: Deployment
+    name: mellon-web-server
+- patch: |-
+    - op: add
+      path: /spec/template/spec/containers/0/env
+      value:
+        - name: PORTAL_ENV
+          value: production
   target:
     kind: Deployment
     name: mellon-web-server
