@@ -108,6 +108,8 @@ patches:
       value:
         - name: LUMEN_ROLE
           value: cms
+        - name: LUMEN_ENV
+          value: production
   target:
     kind: Deployment
     name: lumen-http-server
@@ -117,6 +119,8 @@ patches:
       value:
         - name: LUMEN_ROLE
           value: cms
+        - name: LUMEN_ENV
+          value: production
   target:
     kind: Deployment
     name: lumen-worker
